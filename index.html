@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SKULL CITY</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    width:100%;height:100%;
+    background:#04040a;
+    overflow:hidden;
+    touch-action:none;
+    user-select:none;
+    font-family:'Press Start 2P',monospace;
+    image-rendering:pixelated;
+  }
+
+  /* ── INIT ── */
+  #init{
+    position:fixed;inset:0;z-index:999;
+    background:#04040a;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:24px;
+  }
+  #init.gone{display:none;}
+  #init-canvas{image-rendering:pixelated;display:block;}
+  .ititle{
+    font-size:13px;letter-spacing:4px;
+    color:#c8b870;text-align:center;line-height:2.2;
+    text-shadow:0 0 0 transparent;
+  }
+  .isub{font-size:5px;color:#4a3a20;letter-spacing:2px;text-align:center;line-height:2.6;}
+  #ibtn{
+    background:#04040a;border:2px solid #8b3a1a;
+    color:#c86030;font-family:'Press Start 2P',monospace;
+    font-size:8px;letter-spacing:3px;padding:14px 24px;cursor:pointer;
+  }
+  #ibtn:active{background:#1a0800;}
+
+  /* ── APP ── */
+  #app{
+    width:100%;height:100%;
+    display:flex;flex-direction:column;
+    position:relative;overflow:hidden;
+  }
+  #app.gone{display:none;}
+
+  /* Main canvas — pixel art scene */
+  #scene{
+    display:block;
+    width:100%;
+    flex:1 1 auto;
+    min-height:0;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    cursor:crosshair;
+    touch-action:none;
+  }
+
+  /* Transport — pixel-art styled */
+  #transport{
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 6px;
+    background:#06060e;
+    border-top:2px solid #1a1228;
+    gap:4px;
+    height:52px;
+  }
+  .tbtn{
+    background:#06060e;
+    border:2px solid #2a1a0a;
+    color:#8b5a1a;
+    font-family:'Press Start 2P',monospace;
+    font-size:8px;padding:9px 14px;cursor:pointer;
+    image-rendering:pixelated;
+    letter-spacing:1px;
+  }
+  .tbtn:active{background:#120a00;color:#c87030;}
+  #play-btn{color:#2a6a2a;border-color:#1a3a1a;}
+  #play-btn.on{color:#8b1a1a;border-color:#4a0a0a;}
+  #bpmrow{display:flex;align-items:center;gap:6px;font-size:7px;color:#6a5a20;}
+  #bpmval{font-size:13px;color:#c8a030;min-width:32px;text-align:center;}
+  .bbtn{background:#06060e;border:1px solid #2a1a08;color:#6a5020;
+    font-family:'Press Start 2P',monospace;font-size:9px;
+    width:28px;height:28px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;}
+  #fxlabel{font-size:6px;color:#5a3a5a;text-align:right;line-height:2;letter-spacing:1px;}
+  /* ── BASS TOGGLE ── */
+  #bass-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;flex-shrink:0;}
+  #bass-track{
+    width:34px;height:16px;
+    background:#100818;
+    border:2px solid #2a1428;
+    position:relative;
+    display:block;
+  }
+  #bass-knob{
+    position:absolute;top:2px;left:2px;
+    width:8px;height:8px;
+    background:#2e1830;
+    display:block;
+  }
+  #bass-wrap.on #bass-track{background:#200810;border-color:#7a1010;}
+  #bass-wrap.on #bass-knob{left:20px;background:#cc1818;}
+  #bass-lbl{font-family:'Press Start 2P',monospace;font-size:5px;color:#3a1a3a;letter-spacing:1px;}
+  #bass-wrap.on #bass-lbl{color:#cc1818;}
+</style>
+</head>
+<body>
+
+<!-- ══ INIT ══ -->
+<div id="init">
+  <canvas id="init-canvas" width="120" height="80"></canvas>
+  <div class="ititle">SKULL CITY</div>
+  <div class="isub">808 DRUM SYNTHESIS<br>DISTORTION ENGINE<br>USE HEADPHONES</div>
+  <button id="ibtn" onclick="boot()">[ WAKE THE DEAD ]</button>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app" class="gone">
+  <canvas id="scene"></canvas>
+  <div id="transport">
+    <button class="tbtn" id="play-btn" onclick="togglePlay()">&#9654; PLAY</button>
+    <div id="bpmrow">
+      <button class="bbtn" onclick="adjBPM(-5)">&#9664;</button>
+      <span>BPM<br><span id="bpmval">120</span></span>
+      <button class="bbtn" onclick="adjBPM(5)">&#9654;</button>
+    </div>
+    <div id="bass-wrap" onclick="toggleBass()">
+      <span id="bass-track"><span id="bass-knob"></span></span>
+      <span id="bass-lbl">BASS</span>
+    </div>
+    <div id="fxlabel">DIST --<br>FILT --</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  SKULL CITY  —  Pixel Art Canvas + 808 Web Audio
+//  Rendering philosophy:
+//   • All drawing on integer pixel coordinates
+//   • No ctx.filter, no shadows, no gradients (except hand-dithered)
+//   • Palette of ~32 colors, all pre-defined
+//   • Animation at ~12fps feel via timestep gating
+//   • Buildings = teeth, void clusters = eye sockets
+// ═══════════════════════════════════════════════════════
+
+// ── PALETTE ──────────────────────────────────────────
+// Index these carefully — everything references the palette
+const P = {
+  void:    '#06060f',
+  sky0:    '#0e0e28',  // deepest sky — lifted navy
+  sky1:    '#141438',  // sky mid
+  sky2:    '#1a1850',  // sky upper glow — richer purple
+  fog0:    '#141428',  // fog dark
+  fog1:    '#1e1c40',  // fog mid — more visible
+  fog2:    '#262458',  // fog light
+  bone0:   '#e8d888',  // bright bone — warmer, lighter
+  bone1:   '#c0a858',  // mid bone
+  bone2:   '#887840',  // shadow bone
+  bone3:   '#504820',  // deep bone shadow — visible
+  build0:  '#141428',  // building body dark — lifted
+  build1:  '#1c1a38',  // building body mid
+  build2:  '#262450',  // building highlight — visible
+  build3:  '#0c0c1e',  // building deep shadow
+  winAmb:  '#e89020',  // amber window on — much brighter
+  winAmb2: '#885010',  // amber window dim
+  winRed:  '#882010',  // red window — brighter
+  winGrn:  '#106828',  // green window — visible
+  winYel:  '#b09010',  // yellow window
+  winCyn:  '#106878',  // cyan window — new
+  eyeVd:   '#000008',  // eye socket void
+  eyeRim:  '#281840',  // eye socket rim — visible purple
+  eyeGlw:  '#3a2068',  // eye socket glow — stronger
+  nosVd:   '#000004',  // nasal void
+  neonR:   '#aa2020',  // neon red — brighter
+  neonP:   '#682080',  // neon purple — brighter
+  neonG:   '#106830',  // neon green
+  kick:    '#aa2020',
+  snare:   '#8a4810',
+  tom:     '#807800',
+  hh:      '#106838',
+  toothOn0:'#e8d888',
+  toothOn1:'#c0a858',
+  toothOff:'#1c1a30',
+  toothRim:'#302e48',
+  playHead:'#e8d888',
+  dimWhite:'#a8a898',
+};
+
+// ── CANVAS SETUP ─────────────────────────────────────
+const SCENE_W = 240;   // internal pixel resolution
+const SCENE_H = 340;
+let scale = 1;
+let canvas, ctx2d;
+
+// ── SEQUENCER STATE ──────────────────────────────────
+const STEPS = 16;
+let bpm = 120, isPlaying = false, currentStep = 0, stepInterval = null;
+const drumNames  = ['kick','snare','tom','hh'];
+const drumLabels = ['KICK','SNARE','TOM','H.HAT'];
+const drumShort  = ['KCK','SNR','TOM','H.H'];
+const drumColors = [P.kick, P.snare, P.tom, P.hh];
+const drumColorsB= ['#ff2244','#ff7722','#ddcc00','#00cc66']; // bright for display
+let currentDrum = 0;
+
+const patterns = [
+  {kick:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+   tom: [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0],hh:   [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0]},
+  {kick:[1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0],snare:[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+   tom: [0,0,1,0,0,0,0,1,0,1,0,0,0,0,1,0],hh:   [1,1,0,1,1,0,1,1,1,0,1,0,1,1,0,1]},
+  {kick:[1,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0],snare:[0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,1],
+   tom: [0,1,0,0,1,0,0,1,0,0,0,1,1,0,1,0],hh:   [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1]},
+  {kick:[1,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0],snare:[0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1],
+   tom: [1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0],hh:   [1,1,1,0,1,1,0,1,1,0,1,1,0,1,1,1]},
+];
+let liveSteps = {
+  kick:[...patterns[0].kick],snare:[...patterns[0].snare],
+  tom: [...patterns[0].tom], hh:   [...patterns[0].hh],
+};
+let fxState = {dist:190, filt:950, filtQ:2.2, dly:0.5, dlyMix:0.45};
+
+// ── RENDER STATE ─────────────────────────────────────
+let frame = 0;           // increments every render call
+let animTick = 0;        // increments at ~12fps
+let lastAnimMs = 0;
+const ANIM_FPS = 12;
+
+// Pixel buffer for the scene — we draw to offscreen ImageData
+let imgData, buf32;
+// Static background cache — redrawn only when needed
+let bgImgData, bgBuf32;
+let bgDirty = true; // flag: rebuild bg next frame
+
+// Window flicker state — per building, per window
+let windowFlicker = [];  // array of {x,y,col,phase,on}
+let eyeFlicker = [false, false]; // L, R eye socket glow state
+let fogOffset = 0;
+
+// Interaction state
+let swipeDragging = false;
+let lastTapX = -1, lastTapY = -1;
+let kickPulse = 0;  // 0–1 decay for bass pulse effect
+
+// ── AUDIO ────────────────────────────────────────────
+let actx, masterGain, distNode, filterNode, delayNode, delayFb, delayWet, delaySend, dryGain, reverbNode, comp, lim;
+
+// ── CITY / SKULL LAYOUT (in SCENE pixels) ────────────
+// The skull emerges from the city — all coordinates in internal resolution.
+// Y=0 is top (sky), Y=SCENE_H is bottom (transport bar edge).
+
+// SKY region:        y 0..80
+// CRANIUM domes:     y 20..110   (upper buildings = cranium / forehead)
+// EYE SOCKET L:      x 30..75,  y 95..135   (dark void cluster, left)
+// EYE SOCKET R:      x 125..170, y 95..135  (dark void cluster, right)
+// NASAL region:      x 88..112,  y 130..158
+// JAW / UPPER TEETH: y 195..220  (teeth tops are building rooflines)
+// LOWER TEETH:       y 220..248
+// CHIN:              y 248..270
+
+// Building definitions — each: {x, w, h, windows:[{rx,ry,col}], label?}
+// x,w in scene pixels. Buildings extend from their top (SCENE_H - h) down to SCENE_H
+// We arrange them so the overall roofline silhouette reads as a skull
+
+const FLOOR_Y = 290; // ground level of buildings
+
+const BUILDINGS = [
+  // ── LEFT EDGE / CHEEK — steps up into cranium
+  {x:4,   w:11, h:165, shade:1, windows:[{rx:2,ry:8,c:'A'},{rx:7,ry:16,c:'D'},{rx:2,ry:28,c:'A'},{rx:7,ry:40,c:'D'}]},
+  {x:16,  w:10, h:188, shade:0, windows:[{rx:1,ry:6,c:'A'},{rx:6,ry:14,c:'Y'},{rx:1,ry:26,c:'D'},{rx:6,ry:36,c:'A'},{rx:1,ry:48,c:'A'}], neon:{y:5,c:'nR'}},
+  {x:27,  w:13, h:218, shade:0, windows:[{rx:2,ry:8,c:'A'},{rx:8,ry:8,c:'D'},{rx:2,ry:22,c:'Y'},{rx:8,ry:30,c:'A'},{rx:2,ry:42,c:'A'},{rx:8,ry:50,c:'D'},{rx:2,ry:60,c:'A'}]},
+  {x:41,  w:9,  h:235, shade:0, windows:[{rx:1,ry:6,c:'A'},{rx:5,ry:14,c:'D'},{rx:1,ry:26,c:'A'},{rx:5,ry:36,c:'D'},{rx:1,ry:48,c:'A'},{rx:5,ry:58,c:'A'}]},
+
+  // ── LEFT EYE SOCKET VOID — buildings sharply shorter here
+  // The roofline DIP creates the eye socket negative space
+  {x:51,  w:8,  h:112, shade:2, windows:[]},
+  {x:60,  w:9,  h:98,  shade:2, windows:[{rx:2,ry:10,c:'D'}]},
+  {x:70,  w:7,  h:105, shade:2, windows:[]},
+  {x:78,  w:6,  h:118, shade:2, windows:[{rx:1,ry:12,c:'D'}]},
+
+  // ── LEFT CHEEKBONE — rises back up from eye socket
+  {x:85,  w:10, h:195, shade:1, windows:[{rx:2,ry:8,c:'A'},{rx:6,ry:20,c:'D'},{rx:2,ry:34,c:'A'}], neon:{y:6,c:'nP'}},
+  {x:96,  w:8,  h:208, shade:0, windows:[{rx:1,ry:8,c:'A'},{rx:5,ry:18,c:'D'},{rx:1,ry:30,c:'A'},{rx:5,ry:42,c:'A'}]},
+
+  // ── NASAL CAVITY — very short stumps, deep valley between cheekbones
+  {x:105, w:6,  h:62,  shade:2, windows:[]},
+  {x:112, w:8,  h:55,  shade:2, windows:[]},
+  {x:121, w:7,  h:58,  shade:2, windows:[]},
+  {x:129, w:6,  h:65,  shade:2, windows:[]},
+
+  // ── RIGHT CHEEKBONE — mirrors left
+  {x:136, w:8,  h:205, shade:0, windows:[{rx:1,ry:8,c:'A'},{rx:5,ry:18,c:'D'},{rx:1,ry:30,c:'A'},{rx:5,ry:44,c:'A'}]},
+  {x:145, w:10, h:192, shade:1, windows:[{rx:2,ry:8,c:'A'},{rx:6,ry:20,c:'D'},{rx:2,ry:34,c:'A'}], neon:{y:6,c:'nP'}},
+
+  // ── RIGHT EYE SOCKET VOID — mirrors left
+  {x:156, w:6,  h:115, shade:2, windows:[{rx:1,ry:12,c:'D'}]},
+  {x:163, w:7,  h:102, shade:2, windows:[]},
+  {x:171, w:9,  h:95,  shade:2, windows:[{rx:2,ry:10,c:'D'}]},
+  {x:181, w:8,  h:108, shade:2, windows:[]},
+
+  // ── RIGHT CRANIUM — mirrors left
+  {x:190, w:9,  h:232, shade:0, windows:[{rx:1,ry:6,c:'A'},{rx:5,ry:14,c:'D'},{rx:1,ry:26,c:'A'},{rx:5,ry:38,c:'A'},{rx:1,ry:50,c:'A'}]},
+  {x:200, w:13, h:215, shade:0, windows:[{rx:2,ry:8,c:'A'},{rx:8,ry:8,c:'D'},{rx:2,ry:22,c:'Y'},{rx:8,ry:30,c:'A'},{rx:2,ry:44,c:'A'}]},
+  {x:214, w:10, h:186, shade:0, windows:[{rx:1,ry:6,c:'A'},{rx:6,ry:14,c:'Y'},{rx:1,ry:28,c:'D'},{rx:6,ry:38,c:'A'}], neon:{y:5,c:'nR'}},
+  {x:225, w:11, h:162, shade:1, windows:[{rx:2,ry:8,c:'A'},{rx:7,ry:18,c:'D'},{rx:2,ry:30,c:'A'}]},
+];
+
+// Window color key
+const WIN_COLS = {
+  A: P.winAmb,   // amber on
+  D: P.winAmb2,  // amber dim
+  R: P.winRed,
+  Y: P.winYel,
+  G: P.winGrn,
+};
+
+// Eye socket bounding boxes (scene coords)
+// Left eye: buildings x:51-84, center ~67. Box centered there.
+const EYE_L = {x:48, y:FLOOR_Y-178, w:40, h:52};
+// Right eye: buildings x:156-189, center ~172. Mirror of left.
+const EYE_R = {x:152, y:FLOOR_Y-178, w:40, h:52};
+// Nose: nasal stumps x:105-135, center 120
+const NOSE   = {x:107, y:FLOOR_Y-140, w:26, h:42};
+
+// Teeth layout — 16 steps total, 8 upper + 8 lower
+// Centered at x:120 (scene center), total width = 8*(13+2)-2 = 118px
+// Start x = 120 - 59 = 61
+const TOOTH_W = 13;  // each tooth width in scene pixels
+const TOOTH_GAP = 2;
+const TEETH_X = 61;  // centered start
+const UPPER_TOP = FLOOR_Y - 82;
+const UPPER_H   = 26;
+const LOWER_TOP = FLOOR_Y - 53;
+const LOWER_H   = 32;
+
+// ── DITHER PATTERNS ──────────────────────────────────
+// 4x4 Bayer matrix (0-15), normalized 0-1
+const BAYER4 = [
+  [ 0, 8, 2,10],
+  [12, 4,14, 6],
+  [ 3,11, 1, 9],
+  [15, 7,13, 5],
+];
+function bayer(x, y) { return BAYER4[y&3][x&3] / 16; }
+
+// Checkerboard dither
+function checker(x, y) { return ((x+y)&1) === 0; }
+
+// ── COLOR HELPERS ─────────────────────────────────────
+function hexToRgb(h) {
+  const v = parseInt(h.replace('#',''), 16);
+  return [(v>>16)&255, (v>>8)&255, v&255];
+}
+const COL_CACHE = {};
+function col(hex) {
+  if (!COL_CACHE[hex]) COL_CACHE[hex] = hexToRgb(hex);
+  return COL_CACHE[hex];
+}
+
+// Plot a pixel into buf32
+function px(x, y, r, g, b) {
+  if (x<0||y<0||x>=SCENE_W||y>=SCENE_H) return;
+  const i = (y*SCENE_W + x);
+  buf32[i] = (255<<24)|(b<<16)|(g<<8)|r;
+}
+
+function pxH(x, y, hex) {
+  const [r,g,b] = col(hex);
+  px(x, y, r, g, b);
+}
+
+// Fill rect
+function fillRect(x1, y1, x2, y2, hex) {
+  const [r,g,b] = col(hex);
+  for (let y=y1;y<y2;y++) for (let x=x1;x<x2;x++) px(x,y,r,g,b);
+}
+
+// Dithered fill between two colors based on threshold t (0-1)
+function dithRect(x1,y1,x2,y2, hexA, hexB, t) {
+  const [r0,g0,b0]=col(hexA), [r1,g1,b1]=col(hexB);
+  for (let y=y1;y<y2;y++) for (let x=x1;x<x2;x++) {
+    if (bayer(x,y) < t) px(x,y,r0,g0,b0);
+    else                px(x,y,r1,g1,b1);
+  }
+}
+
+// Horizontal line
+function hLine(x1,x2,y,hex){const[r,g,b]=col(hex);for(let x=x1;x<x2;x++)px(x,y,r,g,b);}
+// Vertical line
+function vLine(x,y1,y2,hex){const[r,g,b]=col(hex);for(let y=y1;y<y2;y++)px(x,y,r,g,b);}
+
+// ── INIT CANVAS (skull preview) ──────────────────────
+function drawInitSkull() {
+  const c = document.getElementById('init-canvas');
+  const ct = c.getContext('2d');
+  ct.imageSmoothingEnabled = false;
+  // Simple pixel skull at 2x
+  const S = 2;
+  const W = 60, H = 40;
+  ct.fillStyle = '#04040a';
+  ct.fillRect(0,0,120,80);
+
+  function sp(x,y,col){ct.fillStyle=col;ct.fillRect(x*S,y*S,S,S);}
+
+  const b = '#c8b870', d='#706030', v='#000004', s='#04040a';
+  // cranium
+  for(let x=16;x<=44;x++) sp(x,5,b);
+  for(let x=12;x<=48;x++) for(let y=6;y<=16;y++) sp(x,y,b);
+  for(let x=10;x<=50;x++) for(let y=17;y<=24;y++) sp(x,y,b);
+  // eye sockets
+  for(let x=14;x<=22;x++) for(let y=14;y<=20;y++) sp(x,y,v);
+  for(let x=38;x<=46;x++) for(let y=14;y<=20;y++) sp(x,y,v);
+  // nose
+  for(let x=27;x<=33;x++) for(let y=22;y<=27;y++) sp(x,y,v);
+  // teeth row
+  for(let t=0;t<8;t++){
+    for(let x=0;x<5;x++) for(let y=0;y<4;y++) sp(11+t*6+x,29+y, t%3?b:d);
+    sp(11+t*6,33,s); sp(15+t*6,33,s);
+  }
+  // flicker
+  setInterval(()=>{
+    sp(17+(Math.random()*2|0)*6, 15+Math.random()*2|0, Math.random()>.5?'#c8780a':'#000004');
+    sp(41+(Math.random()*2|0)*2, 15+Math.random()*2|0, Math.random()>.5?'#c8780a':'#000004');
+  }, 150);
+}
+
+// ── MAIN RENDER LOOP ─────────────────────────────────
+function render(timestamp) {
+  requestAnimationFrame(render);
+  frame++;
+
+  // Gate animation ticks to ~12fps feel
+  const dt = timestamp - lastAnimMs;
+  if (dt >= 1000/ANIM_FPS) {
+    animTick++;
+    lastAnimMs = timestamp;
+    updateAnimState();
+  }
+
+  // Build pixel buffer
+  drawScene();
+  ctx2d.putImageData(imgData, 0, 0);
+}
+
+function updateAnimState() {
+  // Fog drifts
+  fogOffset = (fogOffset + 1) % 64;
+
+  // Kick pulse decay — mark bg dirty when pulse crosses threshold (neon flicker)
+  if (kickPulse > 0) {
+    const wasAbove = kickPulse > 0.3;
+    kickPulse = Math.max(0, kickPulse - 0.18);
+    if (wasAbove && kickPulse <= 0.3) bgDirty = true;
+    if (kickPulse > 0.3) bgDirty = true; // buildings react during pulse
+  }
+
+  // Window flicker — only every 4 anim ticks (~3fps) to reduce bg rebuilds
+  if (animTick % 4 === 0) {
+    let changed = false;
+    for (let i=0;i<windowFlicker.length;i++) {
+      const w = windowFlicker[i];
+      w.phase = (w.phase + 1) % w.period;
+      if (w.phase === 0) { w.on = !w.on; changed = true; }
+    }
+    if (changed) bgDirty = true;
+  }
+
+  // Eye socket flicker — subtle, pulse with kick
+  // eyeFlicker = true means dim flicker frame
+  eyeFlicker[0] = (animTick%9 === 4);   // brief dim every 9 frames
+  eyeFlicker[1] = (animTick%13 === 7);  // different phase
+}
+
+// ── SCENE DRAW ───────────────────────────────────────
+function drawScene() {
+  // ── STATIC BACKGROUND (sky, fog, buildings, bone details) ──
+  // Only rebuild when flagged dirty (first frame, or bg-affecting change)
+  if (bgDirty) {
+    // Point pixel helpers at bgBuf32 temporarily
+    const realBuf = buf32;
+    buf32 = bgBuf32;
+    drawSky();
+    drawFog();
+    drawFarBuildings();
+    drawBuildings();
+    drawBoneDetails();
+    drawVignette();
+    buf32 = realBuf;
+    bgDirty = false;
+  }
+
+  // Copy static bg into working buffer
+  buf32.set(bgBuf32);
+
+  // ── DYNAMIC LAYERS (animated, drawn every frame) ──
+  drawEyeSockets();   // red ember flicker
+  drawNose();         // static but small cost, keep simple
+  drawTeeth();        // step highlights change each beat
+  drawPlayhead();
+  drawHUD();
+  // Vignette is in bg layer — skip here
+}
+
+function drawSky() {
+  // Three-zone dithered sky
+  for (let y=0;y<SCENE_H;y++) {
+    // Below top 55% just fill solid — buildings cover it anyway
+    if (y > SCENE_H * 0.55) { const [r,g,b]=col(P.sky0); for(let x=0;x<SCENE_W;x++) px(x,y,r,g,b); continue; }
+    for (let x=0;x<SCENE_W;x++) {
+      const t = y / (SCENE_H * 0.55);
+      const b_ = bayer(x,y);
+      if (t < 0.25) {
+        if (b_ < t/0.25) pxH(x,y,P.sky1); else pxH(x,y,P.sky2);
+      } else if (t < 0.6) {
+        if (b_ < (t-0.25)/0.35) pxH(x,y,P.sky0); else pxH(x,y,P.sky1);
+      } else {
+        pxH(x,y,P.sky0);
+      }
+    }
+  }
+
+  // Stars — fixed pixel positions
+  const STARS = [
+    [8,3],[22,7],[38,2],[55,9],[75,4],[98,8],[118,3],[138,9],[158,5],[178,3],[198,7],[218,5],[232,9],
+    [15,17],[48,14],[72,18],[100,13],[120,17],[140,13],[168,16],[192,18],[225,14],
+    [30,26],[65,23],[95,28],[120,22],[145,27],[175,24],[210,26],
+  ];
+  for (const [sx,sy] of STARS) {
+    // Flicker: some stars blink
+    const on = ((animTick + sx*3 + sy) % 8) !== 0;
+    if (on) pxH(sx, sy, kickPulse>0.4 ? P.dimWhite : (sx%3===0?P.bone0:P.dimWhite));
+  }
+
+  // Moon — pixel circle, upper right
+  const MX=208, MY=14, MR=9;
+  for (let dy=-MR;dy<=MR;dy++) for(let dx=-MR;dx<=MR;dx++) {
+    const d2 = dx*dx+dy*dy;
+    if (d2 > MR*MR) continue;
+    const mx=MX+dx, my=MY+dy;
+    if (d2 > (MR-1)*(MR-1)) pxH(mx,my,'#2a2050');
+    else if (d2 > (MR-3)*(MR-3)) pxH(mx,my,'#181438');
+    else pxH(mx,my,P.sky1);
+  }
+  // Moon rim — 1px
+  for (let a=0;a<32;a++) {
+    const ang = a/32*Math.PI*2;
+    const mx = MX + Math.round(MR*Math.cos(ang));
+    const my = MY + Math.round(MR*Math.sin(ang));
+    pxH(mx,my,'#3a3460');
+  }
+}
+
+function drawFog() {
+  // Dithered fog bands at various heights — city haze
+  // Fog hovers around building mid-heights
+  const fogBands = [
+    {y: FLOOR_Y-195, h:14, density:0.30},
+    {y: FLOOR_Y-160, h:10, density:0.40},
+    {y: FLOOR_Y-115, h:8,  density:0.28},
+    {y: FLOOR_Y-70,  h:6,  density:0.20},
+  ];
+  for (const {y:fy, h:fh, density} of fogBands) {
+    for (let y=fy; y<fy+fh && y<SCENE_H; y++) {
+      for (let x=0; x<SCENE_W; x++) {
+        // Drift via fogOffset
+        const shifted = (x + fogOffset) & 63;
+        const t = density * (1 - Math.abs(y-fy-fh/2)/(fh/2));
+        if (bayer(shifted&3, y&3) < t) pxH(x,y,P.fog1);
+      }
+    }
+  }
+}
+
+function drawFarBuildings() {
+  // Distant silhouette layer — 2px offset, darker color, no windows
+  const FAR = [
+    {x:0,w:14,h:72},{x:16,w:10,h:88},{x:28,w:16,h:65},
+    {x:46,w:10,h:100},{x:58,w:8,h:52},{x:68,w:10,h:48},
+    {x:100,w:12,h:58},{x:114,w:8,h:42},{x:124,w:12,h:60},
+    {x:138,w:10,h:50},{x:150,w:8,h:56},{x:160,w:10,h:44},
+    {x:172,w:12,h:98},{x:186,w:8,h:62},{x:196,w:16,h:82},{x:214,w:10,h:88},{x:226,w:14,h:70},
+  ];
+  for (const b of FAR) {
+    const top = FLOOR_Y - b.h;
+    fillRect(b.x, top, b.x+b.w, FLOOR_Y, P.build3);
+    // Roofline 1px highlight
+    hLine(b.x, b.x+b.w, top, P.build0);
+  }
+}
+
+function drawBuildings() {
+  for (let bi=0; bi<BUILDINGS.length; bi++) {
+    const b = BUILDINGS[bi];
+    const top = FLOOR_Y - b.h;
+    const shade = [P.build0, P.build1, P.build3][b.shade||0];
+    const sideSh = [P.build3, P.build0, P.build3][b.shade||0];
+
+    // Body
+    fillRect(b.x, top, b.x+b.w, FLOOR_Y, shade);
+
+    // Right edge shadow (1px darker)
+    vLine(b.x+b.w-1, top, FLOOR_Y, sideSh);
+
+    // Roofline — 1px bone highlight (the skull rim!)
+    const rimCol = b.shade===2 ? P.build0 : P.bone2;
+    hLine(b.x, b.x+b.w, top, rimCol);
+
+    // Roof detail — some buildings have 2px parapet
+    if (b.shade !== 2 && b.h > 150) {
+      hLine(b.x, b.x+b.w, top+1, sideSh);
+      // Parapet notches — pixel battlements
+      for (let x=b.x; x<b.x+b.w; x+=3) pxH(x, top, P.build3);
+    }
+
+    // Windows
+    for (const w of b.windows) {
+      const wx = b.x + w.rx;
+      const wy = top + w.ry;
+      if (wy >= FLOOR_Y-2) continue;
+
+      // Find flicker entry
+      const flickId = bi*100 + w.rx*10 + w.ry;
+      let flick = windowFlicker.find(f=>f.id===flickId);
+      if (!flick) {
+        flick = {id:flickId, on:Math.random()>0.3, phase:0, period:3+Math.floor(Math.random()*12)};
+        windowFlicker.push(flick);
+      }
+
+      const wc = WIN_COLS[w.c] || P.winAmb2;
+      // Audio reactive: kick pulse brightens some windows
+      const lit = flick.on || (kickPulse > 0.5 && Math.random()>0.7);
+      const finalCol = lit ? wc : P.build3;
+      pxH(wx, wy, finalCol);
+      // 2x2 window
+      if (wx+1 < b.x+b.w) pxH(wx+1, wy, finalCol);
+      if (wy+1 < FLOOR_Y) {
+        pxH(wx, wy+1, finalCol);
+        if (wx+1 < b.x+b.w) pxH(wx+1, wy+1, lit ? P.winAmb2 : P.build3);
+      }
+    }
+
+    // Neon sign (some buildings)
+    if (b.neon) {
+      const nc = b.neon.c==='nR' ? P.neonR : b.neon.c==='nP' ? P.neonP : P.neonG;
+      const ny = top + b.neon.y;
+      const flick2 = (animTick + bi*3) % 6;
+      if (flick2 !== 0 || kickPulse > 0.3) {
+        hLine(b.x+1, b.x+b.w-1, ny, nc);
+      }
+    }
+  }
+}
+
+function drawEyeSockets() {
+  // Each eye: deep void socket with glowing red ember in the center
+  // The red "light" emanates from within using dithered concentric rings
+  // Flicker driven by animTick + kickPulse
+
+  for (const [E, flick] of [[EYE_L, eyeFlicker[0]], [EYE_R, eyeFlicker[1]]]) {
+    const cx = E.x + E.w/2 | 0;
+    const cy = E.y + E.h/2 | 0;
+
+    // -- Draw socket from outside in --
+    for (let y=E.y; y<E.y+E.h; y++) {
+      for (let x=E.x; x<E.x+E.w; x++) {
+        const dx = (x - cx) / (E.w/2);
+        const dy = (y - cy) / (E.h/2);
+        const d2 = dx*dx + dy*dy;
+        if (d2 > 1.0) continue;
+
+        if (d2 > 0.82) {
+          // Outer bone rim — stone socket edge
+          pxH(x, y, P.eyeRim);
+        } else if (d2 > 0.64) {
+          // Socket wall — dithered dark stone to void transition
+          if (bayer(x,y) < (d2-0.64)/0.18) pxH(x,y,P.eyeRim);
+          else pxH(x,y,P.eyeVd);
+        } else {
+          // Interior void
+          pxH(x, y, P.eyeVd);
+        }
+      }
+    }
+
+    // -- RED EMBER GLOW — dithered intensity pulse --
+    const baseInt = 0.55 + 0.20 * Math.sin(animTick * 0.4) + kickPulse * 0.45;
+    const intensity = Math.min(1.0, baseInt * (flick ? 0.5 : 1.0));
+    const eRx = E.w * 0.38, eRy = E.h * 0.38;
+    // Only iterate over inner ember area (not full socket)
+    const ex0=cx-eRx|0, ex1=cx+eRx+1|0, ey0=cy-eRy|0, ey1=cy+eRy+1|0;
+    for (let y=ey0; y<ey1; y++) {
+      for (let x=ex0; x<ex1; x++) {
+        const edx=(x-cx)/eRx, edy=(y-cy)/eRy;
+        const ed2=edx*edx+edy*edy;
+        if (ed2>1.0) continue;
+        const ed=Math.sqrt(ed2), b_=bayer(x,y);
+        if (ed<0.12) { if(intensity>0.4) pxH(x,y,'#e8c890'); }
+        else if (ed<0.28) {
+          const tt=(ed-0.12)/0.16;
+          if (b_<intensity*(1.0-tt*0.5)) pxH(x,y,'#c84818');
+          else if (b_<intensity*(1.0-tt*0.2)) pxH(x,y,'#882010');
+          else pxH(x,y,P.eyeVd);
+        } else if (ed<0.55) {
+          const tt=(ed-0.28)/0.27;
+          if (b_<intensity*(0.75-tt*0.5)) pxH(x,y,'#882010');
+          else if (b_<intensity*(0.55-tt*0.3)) pxH(x,y,'#4a0c08');
+          else pxH(x,y,P.eyeVd);
+        } else {
+          const tt=(ed-0.55)/0.45;
+          if (b_<intensity*(0.30-tt*0.28)) pxH(x,y,'#300808');
+          else pxH(x,y,P.eyeVd);
+        }
+      }
+    }
+
+    // Bone rim highlight — top arc catches ambient light
+    for (let x=E.x+3; x<E.x+E.w-3; x++) {
+      pxH(x, E.y+1, P.bone2);
+    }
+
+    // Kick pulse FLARE — ember briefly expands
+    if (kickPulse > 0.65) {
+      const flareR = (kickPulse - 0.65) / 0.35 * 5 | 0;
+      for (let fy=-flareR; fy<=flareR; fy++) {
+        for (let fx=-flareR; fx<=flareR; fx++) {
+          if (fx*fx+fy*fy > flareR*flareR) continue;
+          const px_ = cx+fx, py_ = cy+fy;
+          if (bayer(px_,py_) < (kickPulse-0.65)/0.35 * 0.7) {
+            pxH(px_, py_, '#c84818');
+          }
+        }
+      }
+    }
+  }
+}
+
+function drawNose() {
+  // Nasal cavity — the gap between the center spires
+  // Overlay a very dark void over the low-building zone
+  for (let y=NOSE.y; y<NOSE.y+NOSE.h; y++) {
+    for (let x=NOSE.x; x<NOSE.x+NOSE.w; x++) {
+      const dx = (x-(NOSE.x+NOSE.w/2))/(NOSE.w/2);
+      const dy = (y-(NOSE.y+NOSE.h*0.6))/(NOSE.h/2);
+      // Inverted-heart nasal shape
+      const d = dx*dx*1.4 + dy*dy;
+      if (d < 0.85) pxH(x, y, P.nosVd);
+      else if (d < 1.0) pxH(x, y, P.eyeRim);
+    }
+  }
+
+  // Septum line
+  const SX = NOSE.x + NOSE.w/2 | 0;
+  vLine(SX, NOSE.y+2, NOSE.y+NOSE.h-4, P.eyeRim);
+}
+
+function drawBoneDetails() {
+  // Cranium rim — the tops of the tallest buildings read as the top of the skull
+  // We put a subtle bone-colored ridge along the highest rooflines
+
+  // Find top of skull silhouette per column
+  for (let x=0; x<SCENE_W; x++) {
+    // Scan upward to find first non-sky pixel
+    for (let y=0; y<SCENE_H; y++) {
+      const i = y*SCENE_W + x;
+      const c = buf32[i];
+      // Check if it's not sky-ish (R<20, G<20, B>15)
+      const r = c&255, g=(c>>8)&255, b=(c>>16)&255;
+      if (r>25 || g>25 || b>50) {
+        // Bone highlight on building top
+        if (b > 30 && r < 30) {
+          // It's a building — put bone rim
+          if (Math.random() < 0.6) pxH(x, y, P.bone3);
+        }
+        break;
+      }
+    }
+  }
+
+  // Cheekbone suggestion — diagonal ridge from eye socket downward
+  // Left cheek
+  for (let i=0; i<20; i++) {
+    const x = EYE_L.x + i;
+    const y = EYE_L.y + EYE_L.h + i;
+    if (y < FLOOR_Y) {
+      if (bayer(x,y) < 0.4) pxH(x, y, P.bone3);
+    }
+  }
+  // Right cheek
+  for (let i=0; i<20; i++) {
+    const x = EYE_R.x + EYE_R.w - i;
+    const y = EYE_R.y + EYE_R.h + i;
+    if (y < FLOOR_Y) {
+      if (bayer(x,y) < 0.4) pxH(x, y, P.bone3);
+    }
+  }
+
+  // Mandible / jaw outline — the gumline above the teeth
+  const jawY = UPPER_TOP - 4;
+  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), jawY, P.bone2);
+  hLine(TEETH_X+1, TEETH_X + 8*(TOOTH_W+TOOTH_GAP)-1, jawY+1, P.bone3);
+  // Lower jaw seam
+  const lJawY = LOWER_TOP + LOWER_H + 2;
+  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), lJawY, P.bone3);
+
+  // Jaw sides — suggest skull cheeks in bone color
+  const jawLeft = TEETH_X - 3;
+  const jawRight = TEETH_X + 8*(TOOTH_W+TOOTH_GAP) + 2;
+  vLine(jawLeft,  jawY, lJawY+3, P.bone2);
+  vLine(jawRight, jawY, lJawY+3, P.bone2);
+
+  // Gumline — dark pink strip above upper teeth
+  const gumCol = '#3a1010';
+  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), UPPER_TOP-2, gumCol);
+  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), UPPER_TOP-1, gumCol);
+
+  // Suture crack across cranium top — pixel jagged line
+  const crownY = FLOOR_Y - Math.max(...BUILDINGS.map(b=>b.h)) - 2;
+  let cx = 45;
+  for (let i=0; i<110; i++) {
+    cx += (Math.sin(i*0.4)*1.5) | 0;
+    const sy = crownY + ((i%4===0)?1:0) + ((i%7===0)?-1:0);
+    if (sy>=0 && sy<SCENE_H && cx>=0 && cx<SCENE_W) pxH(cx, sy, P.bone3);
+    cx++;
+  }
+}
+
+function drawTeeth() {
+  const d = drumNames[currentDrum];
+  const col_on  = drumColorsB[currentDrum];
+  const col_dim = P.toothOff;
+
+  for (let i=0; i<8; i++) {
+    const x = TEETH_X + i*(TOOTH_W+TOOTH_GAP);
+    const stepU = i;
+    const stepL = i + 8;
+    const onU = liveSteps[d][stepU];
+    const onL = liveSteps[d][stepL];
+    const isPlayU = isPlaying && currentStep === stepU;
+    const isPlayL = isPlaying && currentStep === stepL;
+
+    // UPPER TOOTH
+    drawTooth(x, UPPER_TOP, TOOTH_W, UPPER_H, onU, isPlayU, col_on, stepU+1);
+    // LOWER TOOTH
+    drawTooth(x, LOWER_TOP, TOOTH_W, LOWER_H, onL, isPlayL, col_on, stepL+1);
+  }
+}
+
+function drawTooth(x, y, w, h, on, playing, colOn, label) {
+  const [r0,g0,b0] = col(on ? colOn : '#181630');
+  const [r1,g1,b1] = col(on ? P.toothOn1 : '#0e0c22');
+
+  // Body — dithered enamel gradient (lighter at top)
+  for (let dy=0; dy<h; dy++) {
+    const t = dy/h;
+    for (let dx=0; dx<w; dx++) {
+      if (bayer(dx,dy) < t*0.5+0.1) px(x+dx,y+dy,r1,g1,b1);
+      else                           px(x+dx,y+dy,r0,g0,b0);
+    }
+  }
+
+  // Playing highlight — bright rim
+  if (playing) {
+    hLine(x, x+w, y,   P.bone0);
+    hLine(x, x+w, y+1, P.bone1);
+    vLine(x,   y, y+h, P.bone0);
+    vLine(x+w-1,y,y+h, P.bone1);
+  } else {
+    // Normal rim
+    hLine(x, x+w, y, on ? P.bone1 : P.toothRim);
+    vLine(x, y, y+h, on ? P.bone2 : P.toothRim);
+    vLine(x+w-1,y,y+h,P.build3);
+  }
+
+  // Enamel highlight — 2px wide strip at tooth top
+  if (on) {
+    hLine(x+1, x+w-1, y+1, P.bone0);
+    hLine(x+1, x+w-1, y+2, P.bone1);
+  }
+
+  // Step number — pixel font (simplified 3x5)
+  // Just draw a single pixel dot for the step for readability
+  if (label <= 8) {
+    // small tick mark
+    pxH(x+w/2|0, y+h-3, on ? P.bone0 : '#2a2840');
+  }
+
+  // Kick pulse: teeth briefly flare
+  if (kickPulse > 0.6 && on) {
+    if (bayer(x,y) < kickPulse * 0.5) {
+      hLine(x,x+w,y,P.bone0);
+    }
+  }
+}
+
+function drawPlayhead() {
+  if (!isPlaying) return;
+  const step = (currentStep === 0) ? 15 : currentStep - 1; // just played
+  const isUpper = step < 8;
+  const li = isUpper ? step : step - 8;
+  const px_ = TEETH_X + li*(TOOTH_W+TOOTH_GAP);
+  const py = isUpper ? UPPER_TOP - 3 : LOWER_TOP + LOWER_H + 1;
+
+  // Playhead indicator — small bone pixel arrow
+  const ph = P.playHead;
+  if (isUpper) {
+    hLine(px_+3, px_+TOOTH_W-3, py, ph);
+    hLine(px_+4, px_+TOOTH_W-4, py+1, ph);
+  } else {
+    hLine(px_+3, px_+TOOTH_W-3, py, ph);
+  }
+}
+
+function drawHUD() {
+  // Drum label — pixel text above teeth
+  // Draw "KICK / SNARE / TOM / H.HAT" using block chars
+  const labelY = NOSE.y + NOSE.h + 6;
+  drawPixelText(drumLabels[currentDrum], 120 - drumLabels[currentDrum].length*2, labelY, drumColorsB[currentDrum]);
+
+  // (no text in eyes)
+
+  // Nose interaction hint — tiny asterisk
+  pxH(NOSE.x+NOSE.w/2|0, NOSE.y+NOSE.h/2|0, kickPulse>0.3?'#8b1a1a':'#220a08');
+
+  // BPM indicator — tiny dots along the jaw
+  const beatPhase = isPlaying ? (Date.now() / (60000/bpm)) % 1 : 0;
+  const bx = TEETH_X + (beatPhase * 8 * (TOOTH_W+TOOTH_GAP)) | 0;
+  if (isPlaying) pxH(bx, UPPER_TOP - 4, P.bone1);
+
+  // FX readout line — small pixel text above gumline
+  const distV = Math.round(fxState.dist);
+  const filtV = Math.round(fxState.filt);
+  document.getElementById('fxlabel').textContent = `D:${distV}\nF:${filtV}Hz`;
+  document.getElementById('fxlabel').innerHTML = `D:${distV}<br>F:${filtV}Hz`;
+}
+
+// ── MINIMAL PIXEL FONT ────────────────────────────────
+// 3x5 bitmap glyphs for A-Z 0-9
+const GLYPHS = {
+  'K':[[1,0,1],[1,1,0],[1,0,0],[1,1,0],[1,0,1]],
+  'I':[[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
+  'C':[[0,1,1],[1,0,0],[1,0,0],[1,0,0],[0,1,1]],
+  'S':[[0,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0]],
+  'N':[[1,0,1],[1,1,1],[1,0,1],[1,0,1],[1,0,1]],
+  'A':[[0,1,0],[1,0,1],[1,1,1],[1,0,1],[1,0,1]],
+  'R':[[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,0,1]],
+  'E':[[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],
+  'T':[[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
+  'O':[[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],
+  'M':[[1,0,1],[1,1,1],[1,0,1],[1,0,1],[1,0,1]],
+  'H':[[1,0,1],[1,0,1],[1,1,1],[1,0,1],[1,0,1]],
+  '.':[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,1,0]],
+  'P':[[1,1,0],[1,0,1],[1,1,0],[1,0,0],[1,0,0]],
+  'F':[[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,0,0]],
+  'X':[[1,0,1],[1,0,1],[0,1,0],[1,0,1],[1,0,1]],
+  '1':[[0,1,0],[1,1,0],[0,1,0],[0,1,0],[1,1,1]],
+  '2':[[1,1,0],[0,0,1],[0,1,0],[1,0,0],[1,1,1]],
+  '3':[[1,1,0],[0,0,1],[0,1,0],[0,0,1],[1,1,0]],
+  '4':[[1,0,1],[1,0,1],[1,1,1],[0,0,1],[0,0,1]],
+  '/':[[0,0,1],[0,0,1],[0,1,0],[1,0,0],[1,0,0]],
+};
+
+function drawPixelText(str, x, y, hexCol) {
+  const [r,g,b] = col(hexCol);
+  let cx = x;
+  for (const ch of str.toUpperCase()) {
+    const g_ = GLYPHS[ch];
+    if (g_) {
+      for (let row=0;row<5;row++) for (let col_=0;col_<3;col_++) {
+        if (g_[row][col_]) px(cx+col_, y+row, r, g, b);
+      }
+      cx += 4;
+    } else {
+      cx += 4; // space
+    }
+  }
+}
+
+function drawVignette() {
+  // Dark pixel corners / edges — 3px dark border with dither
+  for (let y=0;y<SCENE_H;y++) for (let x=0;x<SCENE_W;x++) {
+    const edgeDist = Math.min(x, y, SCENE_W-1-x, SCENE_H-1-y);
+    if (edgeDist < 6) {
+      const t = 1 - edgeDist/6;
+      if (bayer(x,y) < t * 0.75) pxH(x,y,P.void);
+    }
+  }
+}
+
+// ── INTERACTION ZONES ────────────────────────────────
+function getSceneXY(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = ((clientX - rect.left) / rect.width  * SCENE_W) | 0;
+  const sy = ((clientY - rect.top)  / rect.height * SCENE_H) | 0;
+  return [sx, sy];
+}
+
+function hitTest(sx, sy, zone) {
+  return sx>=zone.x && sx<zone.x+zone.w && sy>=zone.y && sy<zone.y+zone.h;
+}
+
+function hitTooth(sx, sy) {
+  // Check upper row
+  for (let i=0;i<8;i++) {
+    const tx = TEETH_X + i*(TOOTH_W+TOOTH_GAP);
+    if (sx>=tx && sx<tx+TOOTH_W) {
+      if (sy>=UPPER_TOP && sy<UPPER_TOP+UPPER_H) return i;
+      if (sy>=LOWER_TOP && sy<LOWER_TOP+LOWER_H) return i+8;
+    }
+  }
+  return -1;
+}
+
+function onTap(clientX, clientY) {
+  const [sx,sy] = getSceneXY(clientX, clientY);
+
+  // Teeth
+  const tooth = hitTooth(sx, sy);
+  if (tooth >= 0) {
+    const d = drumNames[currentDrum];
+    liveSteps[d][tooth] ^= 1;
+    return;
+  }
+
+  // Left eye = cycle drum
+  if (hitTest(sx, sy, EYE_L)) { cycleDrum(); return; }
+
+  // Right eye = randomize FX
+  if (hitTest(sx, sy, EYE_R)) { randomizeFX(); return; }
+
+  // Nose = randomize all
+  if (hitTest(sx, sy, NOSE))  { randomizeAll(); return; }
+
+  // Rest of scene = swipe/filter (handled in move)
+}
+
+function onSwipeMove(clientX, clientY) {
+  const [sx, sy] = getSceneXY(clientX, clientY);
+  // Only active in the sky/cranium zone — above the eyes
+  if (sy >= EYE_L.y) return;
+
+  const xPct = sx / SCENE_W;
+  const yPct = sy / EYE_L.y; // 0=top of scene, 1=top of eye sockets
+  fxState.filt = 60 + Math.pow(xPct, 2) * 14000;
+  fxState.dist = 20 + (1 - yPct) * 400;
+  applyFX();
+}
+
+// Touch/Mouse events — attached in boot() once canvas exists
+function attachCanvasEvents() {
+  canvas.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    lastTapX=t.clientX; lastTapY=t.clientY;
+    // Only start swipe drag in upper zone (sky/cranium above eyes)
+    const [sx,sy]=getSceneXY(t.clientX,t.clientY);
+    swipeDragging = (sy < EYE_L.y);
+  }, {passive:false});
+
+  canvas.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if (!swipeDragging) return;
+    onSwipeMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, {passive:false});
+
+  canvas.addEventListener('touchend', e=>{
+    e.preventDefault();
+    const t=e.changedTouches[0];
+    const dx=t.clientX-lastTapX, dy=t.clientY-lastTapY;
+    if (Math.abs(dx)<8 && Math.abs(dy)<8) onTap(t.clientX,t.clientY);
+    swipeDragging=false;
+  }, {passive:false});
+
+  canvas.addEventListener('mousedown', e=>{
+    lastTapX=e.clientX; lastTapY=e.clientY;
+    const [sx,sy]=getSceneXY(e.clientX,e.clientY);
+    swipeDragging=(sy < EYE_L.y);
+  });
+  canvas.addEventListener('mousemove', e=>{ if(swipeDragging) onSwipeMove(e.clientX,e.clientY); });
+  canvas.addEventListener('mouseup', e=>{
+    const dx=e.clientX-lastTapX, dy=e.clientY-lastTapY;
+    if (Math.abs(dx)<5&&Math.abs(dy)<5) onTap(e.clientX,e.clientY);
+    swipeDragging=false;
+  });
+  canvas.addEventListener('mouseleave', ()=>{ swipeDragging=false; });
+}
+
+// ── DRUM CYCLE / FX / RANDOMIZE ──────────────────────
+function cycleDrum() {
+  currentDrum = (currentDrum+1)%4;
+}
+
+function randomizeFX() {
+  fxState.dist    = 55 + Math.random()*360;
+  fxState.filt    = 120 + Math.random()*11000;
+  fxState.filtQ   = 0.4 + Math.random()*10;
+  // Tempo-synced delay fractions: 16th, 8th, dotted 8th, quarter
+  const dlyChoices=[0.25,0.375,0.5,0.75,1.0];
+  fxState.dly    = dlyChoices[Math.floor(Math.random()*dlyChoices.length)];
+  fxState.dlyMix = 0.25 + Math.random()*0.5;
+  applyFX();
+  // Flash right eye
+  eyeFlicker[1] = true;
+  setTimeout(()=>eyeFlicker[1]=false, 300);
+}
+
+function randomizeAll() {
+  drumNames.forEach(d=>{
+    const density=d==='kick'?.25:d==='snare'?.2:d==='hh'?.55:.3;
+    for(let i=0;i<STEPS;i++) liveSteps[d][i]=Math.random()<density?1:0;
+    if(d==='kick') liveSteps.kick[0]=1;
+  });
+  randomizeFX();
+  if (typeof deriveBassPattern === "function") bassPattern = deriveBassPattern();
+}
+
+// ── AUDIO ENGINE ─────────────────────────────────────
+function buildAudio() {
+  lim=actx.createDynamicsCompressor();
+  lim.threshold.value=-2;lim.ratio.value=20;lim.attack.value=0.001;lim.release.value=0.1;
+  lim.connect(actx.destination);
+
+  comp=actx.createDynamicsCompressor();
+  comp.threshold.value=-18;comp.ratio.value=8;comp.attack.value=0.003;comp.release.value=0.15;
+  comp.connect(lim);
+
+  masterGain=actx.createGain();masterGain.gain.value=0.85;masterGain.connect(comp);
+
+  reverbNode=buildReverb();reverbNode.connect(masterGain);
+
+  // Delay — tempo-synced, proper wet/dry
+  delayNode=actx.createDelay(2.0);
+  delayNode.delayTime.value = (60/bpm) * fxState.dly; // dly = beat multiplier (e.g. 0.5 = eighth)
+  delayFb=actx.createGain();delayFb.gain.value=0.45;       // feedback
+  delayWet=actx.createGain();delayWet.gain.value=0.55;     // wet level
+  delaySend=actx.createGain();delaySend.gain.value=0.5;    // send amount
+  delayNode.connect(delayFb);
+  delayFb.connect(delayNode);     // feedback loop
+  delayNode.connect(delayWet);
+  delayWet.connect(masterGain);   // wet out
+  delayWet.connect(reverbNode);   // also feed reverb
+
+  // Dry path
+  dryGain=actx.createGain();dryGain.gain.value=1.0;
+  dryGain.connect(masterGain);
+
+  filterNode=actx.createBiquadFilter();filterNode.type='lowpass';
+  filterNode.frequency.value=fxState.filt;filterNode.Q.value=fxState.filtQ;
+  filterNode.connect(dryGain);      // dry
+  filterNode.connect(delaySend);    // send to delay
+  delaySend.connect(delayNode);
+
+  distNode=actx.createWaveShaper();distNode.curve=distCurve(fxState.dist);
+  distNode.oversample='4x';distNode.connect(filterNode);
+}
+
+function buildReverb(){
+  const c=actx.createConvolver(),rate=actx.sampleRate,len=rate*1.8;
+  const buf=actx.createBuffer(2,len,rate);
+  for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.2);}
+  c.buffer=buf;return c;
+}
+
+function distCurve(amount){
+  const n=256,curve=new Float32Array(n),k=amount;
+  for(let i=0;i<n;i++){const x=(i*2)/n-1;curve[i]=((Math.PI+k)*x)/(Math.PI+k*Math.abs(x));}
+  return curve;
+}
+
+function applyFX(){
+  if(!actx)return;
+  const t=actx.currentTime;
+  distNode.curve=distCurve(fxState.dist);
+  filterNode.frequency.setTargetAtTime(fxState.filt,t,0.04);
+  filterNode.Q.setTargetAtTime(fxState.filtQ,t,0.04);
+  // Tempo-sync delay: dly is a beat multiplier (0.25=16th, 0.5=8th, 0.75=dotted 8th, 1.0=quarter)
+  const beatSec = 60/bpm;
+  delayNode.delayTime.setTargetAtTime(beatSec * fxState.dly, t, 0.02);
+  delayFb.gain.setTargetAtTime(fxState.dlyMix, t, 0.04);
+  delayWet.gain.setTargetAtTime(fxState.dlyMix * 0.8, t, 0.04);
+  delaySend.gain.setTargetAtTime(fxState.dlyMix * 0.6, t, 0.04);
+}
+
+// ── HARMONIC RATIOS (just intonation from bass root) ──
+// All drum pitches derived from bassRootHz using consonant intervals:
+//   root     = 1/1   unison
+//   min3     = 6/5   minor third
+//   maj3     = 5/4   major third
+//   p4       = 4/3   perfect fourth
+//   p5       = 3/2   perfect fifth
+//   min7     = 9/5   minor seventh (dark, blues)
+//   oct      = 2/1   octave
+//   oct+p5   = 3/1   octave + fifth (compound fifth)
+// Kick lives at root + root×2 (unison + octave sweep — total grounding)
+// Tom  lives at p5 sliding to oct (3/2 → 2/1 — beautifully resolves down)
+// Snare bodied noise; crack pitched at min3×oct (6/5×2 = 12/5) above root
+// HH   pure noise, BPF tracking root×20+ (inharmonic shimmer zone)
+
+function playKick(t){
+  const root = bassRootHz || 55;
+  // Body: sweeps from 2 octaves (4/1) down to root (1/1) — pure unison anchor
+  const g=actx.createGain();
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(3.2,t+0.002);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.52);
+  const o=actx.createOscillator();
+  o.frequency.setValueAtTime(root*4, t);        // 2 oct — attack transient
+  o.frequency.exponentialRampToValueAtTime(root*2, t+0.018); // drop to octave
+  o.frequency.exponentialRampToValueAtTime(root, t+0.055);   // land on root
+  o.connect(g);g.connect(distNode);o.start(t);o.stop(t+0.55);
+  o.onended=()=>{try{g.disconnect();}catch(e){}};
+  // Click: square at root × (3/2) × 4 = compound fifth 2 oct up — snappy, harmonic
+  const cg=actx.createGain();
+  cg.gain.setValueAtTime(0.9,t);
+  cg.gain.exponentialRampToValueAtTime(0.001,t+0.009);
+  const co=actx.createOscillator();co.type='square';
+  co.frequency.value = root * 6; // 3/1 × 2 = compound fifth, very short so it's just click color
+  co.connect(cg);cg.connect(distNode);co.start(t);co.stop(t+0.010);
+  co.onended=()=>{try{cg.disconnect();}catch(e){}};
+  kickPulse=1.0;
+}
+
+function playSnare(t){
+  const root = bassRootHz || 55;
+  // Crack tone: minor third above root × 2 octaves = (6/5) × 4 = 24/5
+  // This is the blue note relationship — adds darkness without clashing
+  const crackHz = root * (6/5) * 4;
+  const og=actx.createGain();
+  og.gain.setValueAtTime(0,t);
+  og.gain.linearRampToValueAtTime(0.28,t+0.001);
+  og.gain.exponentialRampToValueAtTime(0.001,t+0.055);
+  const o=actx.createOscillator();o.type='triangle';
+  o.frequency.setValueAtTime(crackHz,t);
+  o.frequency.exponentialRampToValueAtTime(crackHz*(4/5),t+0.04); // falls a maj3 down
+  o.connect(og);og.connect(distNode);o.start(t);o.stop(t+0.06);
+  o.onended=()=>{try{og.disconnect();}catch(e){}};
+  // Noise body: BPF tuned to min7 zone (9/5 × 2 = 18/5 above root)
+  // keeps the snare's spectral center related to the harmony
+  const bsz=actx.sampleRate*0.20,buf=actx.createBuffer(1,bsz,actx.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<bsz;i++)d[i]=(Math.random()*2-1);
+  const ns=actx.createBufferSource();ns.buffer=buf;
+  const bpf=actx.createBiquadFilter();bpf.type='bandpass';
+  bpf.frequency.value=Math.min(root*(9/5)*2, 3200);bpf.Q.value=0.5;
+  const hpf=actx.createBiquadFilter();hpf.type='highpass';hpf.frequency.value=1600;
+  const ng=actx.createGain();
+  ng.gain.setValueAtTime(0,t);ng.gain.linearRampToValueAtTime(1.1,t+0.002);
+  ng.gain.exponentialRampToValueAtTime(0.001,t+0.19);
+  ns.connect(bpf);bpf.connect(hpf);hpf.connect(ng);ng.connect(distNode);
+  ns.start(t);ns.stop(t+0.21);
+  ns.onended=()=>{try{ng.disconnect();hpf.disconnect();bpf.disconnect();}catch(e){}};
+}
+
+function playTom(t){
+  const root = bassRootHz || 55;
+  // Tom: p5 above root (3/2) sliding down to root — a resolving cadence gesture
+  // The p5 → root slide is the most consonant motion possible
+  const g=actx.createGain();
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.95,t+0.002);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.40);
+  const o=actx.createOscillator();
+  o.frequency.setValueAtTime(root*(3/2)*2, t);     // p5 one oct up
+  o.frequency.exponentialRampToValueAtTime(root*(3/2), t+0.10); // down to p5
+  o.frequency.exponentialRampToValueAtTime(root, t+0.30);       // resolves to root
+  o.connect(g);g.connect(distNode);o.start(t);o.stop(t+0.44);
+  o.onended=()=>{try{g.disconnect();}catch(e){}};
+}
+
+function playHH(t){
+  const root = bassRootHz || 55;
+  // Hi-hat: noise with BPF in the inharmonic zone well above pitch content
+  // HPF at root×40 minimum — guarantees no overlap with any harmonic partial
+  const cutoff = Math.max(root * 40, 6500);
+  const bsz=actx.sampleRate*0.06,buf=actx.createBuffer(1,bsz,actx.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<bsz;i++)d[i]=(Math.random()*2-1);
+  const ns=actx.createBufferSource();ns.buffer=buf;
+  const hpf=actx.createBiquadFilter();hpf.type='highpass';hpf.frequency.value=cutoff;
+  const g=actx.createGain();
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.42,t+0.001);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.052);
+  ns.connect(hpf);hpf.connect(g);g.connect(distNode);ns.start(t);ns.stop(t+0.06);
+  ns.onended=()=>{try{g.disconnect();hpf.disconnect();}catch(e){}};
+}
+const drumFns=[playKick,playSnare,playTom,playHH];
+
+function stepMs(){return(60/bpm)/4*1000;}
+function tick(){
+  const t=actx.currentTime+0.02;
+  // Advance bass root FIRST so drums and bass all read the same pitch this step
+  advanceBassRoot(currentStep);
+  drumNames.forEach((d,i)=>{if(liveSteps[d][currentStep])drumFns[i](t);});
+  tickBass(currentStep, t);
+  currentStep=(currentStep+1)%STEPS;
+}
+function togglePlay(){isPlaying?pause_():play_();}
+function play_(){
+  if(!actx)return;if(actx.state==='suspended')actx.resume();
+  isPlaying=true;currentStep=0;tick();stepInterval=setInterval(tick,stepMs());
+  document.getElementById('play-btn').textContent='|| PAUSE';
+  document.getElementById('play-btn').classList.add('on');
+}
+function pause_(){
+  isPlaying=false;clearInterval(stepInterval);
+  document.getElementById('play-btn').textContent='&#9654; PLAY';
+  document.getElementById('play-btn').innerHTML='&#9654; PLAY';
+  document.getElementById('play-btn').classList.remove('on');
+}
+function stopSeq(){pause_();currentStep=0;}
+function adjBPM(d){
+  bpm=Math.max(60,Math.min(200,bpm+d));
+  document.getElementById('bpmval').textContent=bpm;
+  if(isPlaying){clearInterval(stepInterval);stepInterval=setInterval(tick,stepMs());}
+}
+
+
+// ── CONTINUOUS BASS SYNTH ─────────────────────────────
+// A running sawtooth through its own LP filter, feeding the main FX chain.
+// Drums trigger pitch jumps and filter sweeps — kick drops it low,
+// snare nudges it up, tom bends it, hh opens the filter briefly.
+
+let bassOn       = false;
+let bassPattern  = Array(16).fill(0); // kept for deriveBassPattern compat
+let bassOsc      = null;  // running oscillator
+let bassFilter   = null;  // bass-dedicated LP filter
+let bassAmp      = null;  // master amp for bass (for on/off fade)
+
+// Bass root pitch in Hz — drifts between drum hits
+// Bass roots: A minor pentatonic in octave 1 (MIDI → exact Hz)
+// A1=55, C2=65.4, E2=82.4, G2=98, B2=123.5 — cycling sequence for variety
+function midiToHz(m){ return 440 * Math.pow(2, (m-69)/12); }
+// A minor pentatonic roots: A1 C2 D2 E2 G2
+// Sequence designed so adjacent roots are never jarring intervals
+const BASS_ROOTS_MIDI = [33, 33, 36, 33, 40, 33, 38, 33, 43, 33, 36, 40]; // A A C A E A D A G A C E
+const BASS_ROOTS = BASS_ROOTS_MIDI.map(midiToHz);
+let bassRootHz   = BASS_ROOTS[0];
+let bassRootIdx  = 0;
+
+// Called at the TOP of tick() — before drums or bass fire — so everyone reads the same root
+function advanceBassRoot(step) {
+  // Advance only on beat 1 of each bar (step 0) or occasionally on kick hits
+  if (step === 0) {
+    bassRootIdx = (bassRootIdx + 1) % BASS_ROOTS.length;
+    bassRootHz  = BASS_ROOTS[bassRootIdx];
+    // Also push the running oscillator to the new root smoothly
+    if (bassOsc && bassOn) {
+      bassOsc.frequency.setTargetAtTime(bassRootHz, actx.currentTime + 0.02, 0.04);
+    }
+  }
+}
+
+
+// Kept for randomizeAll compatibility
+function deriveBassPattern() { return Array(16).fill(0); }
+
+function buildBassNodes() {
+  if (bassOsc) return; // already built
+
+  // Bass-dedicated filter — separate from main filter so it has its own cutoff
+  bassFilter = actx.createBiquadFilter();
+  bassFilter.type = 'lowpass';
+  bassFilter.frequency.value = 280;
+  bassFilter.Q.value = 3.5;
+
+  // Amp
+  bassAmp = actx.createGain();
+  bassAmp.gain.value = 0;
+
+  // Route: bassOsc → bassFilter → bassAmp → distNode (into main FX chain)
+  bassAmp.connect(distNode);
+  bassFilter.connect(bassAmp);
+
+  // Continuous sawtooth
+  bassOsc = actx.createOscillator();
+  bassOsc.type = 'sawtooth';
+  bassOsc.frequency.value = bassRootHz;
+  bassOsc.connect(bassFilter);
+  bassOsc.start();
+}
+
+// Called every sequencer step — reacts to what just fired
+function tickBass(step, t) {
+  if (!bassOn || !bassOsc) return;
+
+  const hasKick  = liveSteps.kick[step];
+  const hasSnare = liveSteps.snare[step];
+  const hasTom   = liveSteps.tom[step];
+  const hasHH    = liveSteps.hh[step];
+
+  // Root was already advanced by advanceBassRoot() — read the current value
+  const now = t;
+  const osc = bassOsc;
+  const fil = bassFilter;
+
+  if (hasKick) {
+    // Kick: slam pitch down an octave, bounce back up — heavy sub thump
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(bassRootHz * 0.5, now);
+    osc.frequency.exponentialRampToValueAtTime(bassRootHz, now + 0.18);
+    // Filter plunges closed then reopens
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(80, now);
+    fil.frequency.exponentialRampToValueAtTime(320, now + 0.25);
+    // Amplitude swell on kick
+    bassAmp.gain.cancelScheduledValues(now);
+    bassAmp.gain.setValueAtTime(1.2, now);
+    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.3);
+  } else if (hasSnare) {
+    // Snare: bass jumps to minor 7th (matching snare tone interval) then back
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(bassRootHz * 1.778, now);  // minor 7th
+    osc.frequency.exponentialRampToValueAtTime(bassRootHz, now + 0.14);
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(1100, now);
+    fil.frequency.exponentialRampToValueAtTime(280, now + 0.22);
+  } else if (hasTom) {
+    // Tom: bass steps to perfect 5th (matching tom's interval) then settles back
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(bassRootHz * 1.5, now);    // perfect 5th
+    osc.frequency.exponentialRampToValueAtTime(bassRootHz, now + 0.25);
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(620, now);
+    fil.frequency.exponentialRampToValueAtTime(280, now + 0.18);
+  } else if (hasHH) {
+    // HH: pitch trill up a semitone (x1.059) and back, filter flutter
+    const semi = bassRootHz * 1.059;
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(semi, now);
+    osc.frequency.setValueAtTime(bassRootHz, now + 0.04);
+    // Filter opens briefly then snaps back
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(1200, now);
+    fil.frequency.exponentialRampToValueAtTime(280, now + 0.06);
+    // Slight amp accent
+    bassAmp.gain.cancelScheduledValues(now);
+    bassAmp.gain.setValueAtTime(0.85, now);
+    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.06);
+  } else {
+    // Quiet step: subtle pitch oscillation, filter drifts
+    const drift = bassRootHz * (0.98 + Math.random() * 0.04);
+    osc.frequency.setTargetAtTime(drift, now, 0.1);
+    fil.frequency.setTargetAtTime(300, now, 0.15);
+  }
+}
+
+function toggleBass() {
+  if (!actx) return;
+  bassOn = !bassOn;
+  const wrap = document.getElementById('bass-wrap');
+  if (bassOn) {
+    wrap.classList.add('on');
+    buildBassNodes();
+    bassAmp.gain.setTargetAtTime(0.7, actx.currentTime, 0.08);
+  } else {
+    wrap.classList.remove('on');
+    if (bassAmp) bassAmp.gain.setTargetAtTime(0.0, actx.currentTime, 0.08);
+  }
+}
+
+// ── BOOT ─────────────────────────────────────────────
+function boot() {
+  // Audio context
+  actx = new (window.AudioContext||window.webkitAudioContext)();
+  if (actx.state==='suspended') actx.resume();
+  buildAudio();
+
+  // Canvas setup
+  canvas = document.getElementById('scene');
+  ctx2d  = canvas.getContext('2d');
+  ctx2d.imageSmoothingEnabled = false;
+
+  // Size canvas to internal resolution, CSS scales it
+  canvas.width  = SCENE_W;
+  canvas.height = SCENE_H;
+
+  // Create pixel buffers
+  imgData   = ctx2d.createImageData(SCENE_W, SCENE_H);
+  buf32     = new Uint32Array(imgData.data.buffer);
+  bgImgData = ctx2d.createImageData(SCENE_W, SCENE_H);
+  bgBuf32   = new Uint32Array(bgImgData.data.buffer);
+
+  // Show app
+  document.getElementById('init').classList.add('gone');
+  document.getElementById('app').classList.remove('gone');
+
+  // Attach events now that canvas exists
+  attachCanvasEvents();
+
+  // Start render loop
+  requestAnimationFrame(render);
+
+  // Autoplay
+  setTimeout(()=>play_(), 400);
+}
+
+// ── INIT PAGE SKULL ANIMATION ─────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  Object.values(P).forEach(function(h){ col(h); });
+  drawInitSkull();
+});
+</script>
+</body>
+</html>
