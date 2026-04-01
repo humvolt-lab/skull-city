@@ -108,6 +108,121 @@
   #bass-wrap.on #bass-knob{left:20px;background:#cc1818;}
   #bass-lbl{font-family:'Press Start 2P',monospace;font-size:5px;color:#3a1a3a;letter-spacing:1px;}
   #bass-wrap.on #bass-lbl{color:#cc1818;}
+
+  /* ── BASS PANEL ── */
+  #bass-panel {
+    flex-shrink: 0;
+    width: 100%;
+    background: #0e0c1e;
+    border-top: 2px solid #2a1840;
+    border-bottom: 2px solid #140e28;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 0;
+    padding: 0 8px 0 8px;
+    height: 64px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Pixel city skyline SVG bg — purely decorative */
+  #bass-bg {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* Building-shaped buttons — the core pixel art affordance */
+  .bld-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+    z-index: 2;
+    gap: 2px;
+    padding-bottom: 4px;
+  }
+  .bld-btn:active .bld-body { filter: brightness(1.5); }
+
+  /* The building tower itself */
+  .bld-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    image-rendering: pixelated;
+  }
+  .bld-roof {
+    width: 100%;
+    height: 5px;
+    background: #c0a858;
+    box-shadow: 0 -1px 0 #e8d888;
+  }
+  .bld-shaft {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 3px 0;
+    background: #1e1c3a;
+    border-left: 2px solid #303060;
+    border-right: 2px solid #0e0c20;
+  }
+  .bld-win-row {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+  }
+  .bld-win {
+    width: 4px; height: 4px;
+    background: #18163a;
+    outline: 1px solid #0a0820;
+  }
+  .bld-win.lit  { background: #e89020; box-shadow: 0 0 3px #e89020; }
+  .bld-win.litR { background: #cc2020; box-shadow: 0 0 3px #cc2020; }
+  .bld-win.litG { background: #18a040; box-shadow: 0 0 3px #18a040; }
+
+  /* Label beneath building */
+  .bld-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 4px;
+    color: #8070a0;
+    letter-spacing: 0.5px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .bld-btn:active .bld-label { color: #e8d888; }
+
+  /* Active/highlighted building state */
+  .bld-btn.active .bld-roof   { background: #e8d888; }
+  .bld-btn.active .bld-shaft  { background: #241e40; border-left-color: #3a3468; }
+  .bld-btn.active .bld-win.lit { background: #e8c060; }
+  .bld-btn.active .bld-label  { color: #c0a858; }
+
+  /* Spacer between button groups */
+  .bld-gap { flex: 1; }
+
+  /* Bass panel section labels */
+  .bld-section {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 4px;
+    color: #604878;
+    letter-spacing: 1px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    align-self: center;
+    padding: 0 4px;
+    z-index: 2;
+  }
 </style>
 </head>
 <body>
@@ -123,16 +238,170 @@
 <!-- ══ APP ══ -->
 <div id="app" class="gone">
   <canvas id="scene"></canvas>
+
+  <!-- ══ BASS PANEL ══ -->
+  <div id="bass-panel">
+    <!-- Decorative bg skyline SVG -->
+    <svg id="bass-bg" viewBox="0 0 400 58" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
+      <!-- Far bg buildings - purely decorative silhouette -->
+      <rect x="0"   y="28" width="18" height="30" fill="#181630"/>
+      <rect x="4"   y="20" width="8"  height="8"  fill="#181630"/>
+      <rect x="20"  y="32" width="14" height="26" fill="#181630"/>
+      <rect x="36"  y="25" width="20" height="33" fill="#181630"/>
+      <rect x="40"  y="16" width="10" height="9"  fill="#181630"/>
+      <rect x="58"  y="30" width="16" height="28" fill="#201c3a"/>
+      <rect x="76"  y="22" width="22" height="36" fill="#201c3a"/>
+      <rect x="80"  y="14" width="12" height="8"  fill="#201c3a"/>
+      <rect x="100" y="35" width="12" height="23" fill="#181630"/>
+      <rect x="114" y="29" width="18" height="29" fill="#201c3a"/>
+      <rect x="134" y="24" width="14" height="34" fill="#181630"/>
+      <rect x="150" y="31" width="20" height="27" fill="#201c3a"/>
+      <rect x="172" y="20" width="16" height="38" fill="#181630"/>
+      <rect x="176" y="12" width="8"  height="8"  fill="#181630"/>
+      <rect x="190" y="28" width="22" height="30" fill="#201c3a"/>
+      <rect x="214" y="25" width="16" height="33" fill="#181630"/>
+      <rect x="232" y="32" width="14" height="26" fill="#201c3a"/>
+      <rect x="248" y="22" width="20" height="36" fill="#181630"/>
+      <rect x="270" y="30" width="14" height="28" fill="#201c3a"/>
+      <rect x="286" y="26" width="18" height="32" fill="#181630"/>
+      <rect x="306" y="20" width="22" height="38" fill="#201c3a"/>
+      <rect x="310" y="12" width="10" height="8"  fill="#201c3a"/>
+      <rect x="330" y="28" width="16" height="30" fill="#181630"/>
+      <rect x="348" y="24" width="20" height="34" fill="#201c3a"/>
+      <rect x="370" y="30" width="16" height="28" fill="#181630"/>
+      <rect x="388" y="22" width="12" height="36" fill="#201c3a"/>
+      <!-- Ground line -->
+      <rect x="0" y="57" width="400" height="1" fill="#2a1840"/>
+      <!-- Dim amber windows scattered -->
+      <rect x="6"   y="23" width="3" height="3" fill="#6a3a08"/>
+      <rect x="43"  y="19" width="3" height="3" fill="#6a3a08"/>
+      <rect x="83"  y="18" width="3" height="3" fill="#6a3a08"/>
+      <rect x="117" y="33" width="3" height="3" fill="#6a3a08"/>
+      <rect x="178" y="16" width="3" height="3" fill="#6a3a08"/>
+      <rect x="253" y="26" width="3" height="3" fill="#6a3a08"/>
+      <rect x="312" y="16" width="3" height="3" fill="#6a3a08"/>
+      <rect x="351" y="28" width="3" height="3" fill="#6a3a08"/>
+    </svg>
+
+    <!-- MELODY section -->
+    <span class="bld-section">MELODY</span>
+
+    <!-- RND SCALE button — tall narrow tower -->
+    <button class="bld-btn" onclick="bassRndScale()" title="Randomize Scale">
+      <div class="bld-body">
+        <div class="bld-roof" style="width:18px"></div>
+        <div class="bld-shaft" style="width:18px;height:34px">
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win lit"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span></div>
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span></div>
+        </div>
+      </div>
+      <div class="bld-label">SCALE</div>
+    </button>
+
+    <!-- RND ROOT button — wide squat building -->
+    <button class="bld-btn" onclick="bassRndRoot()" title="Randomize Root Note">
+      <div class="bld-body">
+        <div class="bld-roof" style="width:24px"></div>
+        <div class="bld-shaft" style="width:24px;height:24px">
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win"></span><span class="bld-win lit"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win lit"></span><span class="bld-win"></span></div>
+        </div>
+      </div>
+      <div class="bld-label">ROOT</div>
+    </button>
+
+    <!-- INTERVAL button — medium tower with antenna -->
+    <button class="bld-btn" onclick="bassRndIntervals()" title="Randomize Intervals">
+      <div class="bld-body">
+        <div style="width:2px;height:6px;background:#887840;margin:0 auto"></div>
+        <div class="bld-roof" style="width:20px"></div>
+        <div class="bld-shaft" style="width:20px;height:30px">
+          <div class="bld-win-row"><span class="bld-win litR"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win litR"></span></div>
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win lit"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span></div>
+        </div>
+      </div>
+      <div class="bld-label">INTRVL</div>
+    </button>
+
+    <div class="bld-gap"></div>
+    <span class="bld-section">SOUND</span>
+
+    <!-- WAVEFORM button — chunky tower -->
+    <button class="bld-btn" id="bass-wave-btn" onclick="bassRndWave()" title="Cycle Waveform">
+      <div class="bld-body">
+        <div class="bld-roof" style="width:22px"></div>
+        <div class="bld-shaft" style="width:22px;height:28px">
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win litG"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span><span class="bld-win litG"></span></div>
+          <div class="bld-win-row"><span class="bld-win litG"></span><span class="bld-win"></span><span class="bld-win lit"></span></div>
+        </div>
+      </div>
+      <div class="bld-label" id="bass-wave-lbl">SAW</div>
+    </button>
+
+    <!-- FILTER button — tall slender spire -->
+    <button class="bld-btn" onclick="bassRndFilter()" title="Randomize Bass Filter">
+      <div class="bld-body">
+        <div style="width:2px;height:8px;background:#504820;margin:0 auto"></div>
+        <div class="bld-roof" style="width:14px"></div>
+        <div class="bld-shaft" style="width:14px;height:38px">
+          <div class="bld-win-row"><span class="bld-win litR"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win litR"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span></div>
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win lit"></span></div>
+        </div>
+      </div>
+      <div class="bld-label">FILT</div>
+    </button>
+
+    <!-- DETUNE button — medium building -->
+    <button class="bld-btn" onclick="bassRndDetune()" title="Randomize Detune">
+      <div class="bld-body">
+        <div class="bld-roof" style="width:20px"></div>
+        <div class="bld-shaft" style="width:20px;height:26px">
+          <div class="bld-win-row"><span class="bld-win"></span><span class="bld-win litR"></span></div>
+          <div class="bld-win-row"><span class="bld-win lit"></span><span class="bld-win"></span></div>
+          <div class="bld-win-row"><span class="bld-win litR"></span><span class="bld-win lit"></span></div>
+        </div>
+      </div>
+      <div class="bld-label">TUNE</div>
+    </button>
+
+    <div class="bld-gap"></div>
+
+    <!-- BASS ON/OFF toggle — moved here, styled as a short squat building -->
+    <button class="bld-btn" id="bass-onoff-btn" onclick="toggleBass()" title="Bass On/Off">
+      <div class="bld-body">
+        <div class="bld-roof" style="width:26px;background:#2a1838" id="bass-onoff-roof"></div>
+        <div class="bld-shaft" style="width:26px;height:20px" id="bass-onoff-shaft">
+          <div class="bld-win-row">
+            <span class="bld-win" id="bw0"></span>
+            <span class="bld-win" id="bw1"></span>
+            <span class="bld-win" id="bw2"></span>
+          </div>
+          <div class="bld-win-row">
+            <span class="bld-win" id="bw3"></span>
+            <span class="bld-win" id="bw4"></span>
+            <span class="bld-win" id="bw5"></span>
+          </div>
+        </div>
+      </div>
+      <div class="bld-label" id="bass-onoff-lbl">BASS OFF</div>
+    </button>
+  </div>
+
   <div id="transport">
     <button class="tbtn" id="play-btn" onclick="togglePlay()">&#9654; PLAY</button>
     <div id="bpmrow">
       <button class="bbtn" onclick="adjBPM(-5)">&#9664;</button>
       <span>BPM<br><span id="bpmval">120</span></span>
       <button class="bbtn" onclick="adjBPM(5)">&#9654;</button>
-    </div>
-    <div id="bass-wrap" onclick="toggleBass()">
-      <span id="bass-track"><span id="bass-knob"></span></span>
-      <span id="bass-lbl">BASS</span>
     </div>
     <div id="fxlabel">DIST --<br>FILT --</div>
   </div>
@@ -223,6 +492,7 @@ let liveSteps = {
   tom: [...patterns[0].tom], hh:   [...patterns[0].hh],
 };
 let fxState = {dist:190, filt:950, filtQ:2.2, dly:0.5, dlyMix:0.45};
+let skyT = 0.15; // 0=closed(red) 1=open(blue-green), updated with filter
 
 // ── RENDER STATE ─────────────────────────────────────
 let frame = 0;           // increments every render call
@@ -506,19 +776,56 @@ function drawScene() {
 }
 
 function drawSky() {
-  // Three-zone dithered sky
+  // Sky palette interpolated from filter position (skyT 0→1)
+  // skyT=0 (filter closed): deep crimson/blood night
+  // skyT=0.5 (mid):         familiar navy/purple
+  // skyT=1 (filter open):   cold teal/arctic dawn
+
+  // Define 3 palette stops — each has [deep, mid, top] colours as [R,G,B]
+  function lerp(a,b,t){return Math.round(a+(b-a)*t);}
+  function lerpRGB(c0,c1,t){return [lerp(c0[0],c1[0],t),lerp(c0[1],c1[1],t),lerp(c0[2],c1[2],t)];}
+
+  // Stop 0: closed filter — blood red night
+  const stopA = { deep:[6,2,4], mid:[18,4,8], top:[32,6,12] };
+  // Stop 1: mid filter — deep navy purple (original)
+  const stopB = { deep:[14,14,40], mid:[20,20,56], top:[26,24,80] };
+  // Stop 2: open filter — cold arctic teal
+  const stopC = { deep:[4,18,28], mid:[6,28,44], top:[8,40,60] };
+
+  // Blend between stops based on skyT
+  let skyDeep, skyMid, skyTop;
+  if (skyT < 0.5) {
+    const tt = skyT / 0.5;
+    skyDeep = lerpRGB(stopA.deep, stopB.deep, tt);
+    skyMid  = lerpRGB(stopA.mid,  stopB.mid,  tt);
+    skyTop  = lerpRGB(stopA.top,  stopB.top,  tt);
+  } else {
+    const tt = (skyT - 0.5) / 0.5;
+    skyDeep = lerpRGB(stopB.deep, stopC.deep, tt);
+    skyMid  = lerpRGB(stopB.mid,  stopC.mid,  tt);
+    skyTop  = lerpRGB(stopB.top,  stopC.top,  tt);
+  }
+
   for (let y=0;y<SCENE_H;y++) {
-    // Below top 55% just fill solid — buildings cover it anyway
-    if (y > SCENE_H * 0.55) { const [r,g,b]=col(P.sky0); for(let x=0;x<SCENE_W;x++) px(x,y,r,g,b); continue; }
+    if (y > SCENE_H * 0.55) {
+      // Below building tops — solid deep colour
+      for(let x=0;x<SCENE_W;x++) px(x,y,skyDeep[0],skyDeep[1],skyDeep[2]);
+      continue;
+    }
+    const t = y / (SCENE_H * 0.55); // 0=top, 1=horizon
     for (let x=0;x<SCENE_W;x++) {
-      const t = y / (SCENE_H * 0.55);
       const b_ = bayer(x,y);
+      // Three zones: top(skyTop) → mid(skyMid) → deep(skyDeep)
       if (t < 0.25) {
-        if (b_ < t/0.25) pxH(x,y,P.sky1); else pxH(x,y,P.sky2);
-      } else if (t < 0.6) {
-        if (b_ < (t-0.25)/0.35) pxH(x,y,P.sky0); else pxH(x,y,P.sky1);
+        const tt = t / 0.25;
+        const c = b_ < tt ? skyMid : skyTop;
+        px(x,y,c[0],c[1],c[2]);
+      } else if (t < 0.65) {
+        const tt = (t-0.25)/0.40;
+        const c = b_ < tt ? skyDeep : skyMid;
+        px(x,y,c[0],c[1],c[2]);
       } else {
-        pxH(x,y,P.sky0);
+        px(x,y,skyDeep[0],skyDeep[1],skyDeep[2]);
       }
     }
   }
@@ -1032,7 +1339,7 @@ function onTap(clientX, clientY) {
   if (hitTest(sx, sy, EYE_R)) { randomizeFX(); return; }
 
   // Nose = randomize all
-  if (hitTest(sx, sy, NOSE))  { randomizeAll(); return; }
+  if (hitTest(sx, sy, NOSE))  { randomizeFX(); return; }
 
   // Rest of scene = swipe/filter (handled in move)
 }
@@ -1182,6 +1489,9 @@ function applyFX(){
   delayFb.gain.setTargetAtTime(fxState.dlyMix, t, 0.04);
   delayWet.gain.setTargetAtTime(fxState.dlyMix * 0.8, t, 0.04);
   delaySend.gain.setTargetAtTime(fxState.dlyMix * 0.6, t, 0.04);
+  // Update sky colour from filter position
+  const newSkyT = Math.log(fxState.filt / 60) / Math.log(14060 / 60);
+  if (Math.abs(newSkyT - skyT) > 0.01) { skyT = newSkyT; bgDirty = true; }
 }
 
 // ── HARMONIC RATIOS (just intonation from bass root) ──
@@ -1447,14 +1757,209 @@ function tickBass(step, t) {
 function toggleBass() {
   if (!actx) return;
   bassOn = !bassOn;
-  const wrap = document.getElementById('bass-wrap');
+  const lbl  = document.getElementById('bass-onoff-lbl');
+  const roof = document.getElementById('bass-onoff-roof');
+  const bw   = [0,1,2,3,4,5].map(function(i){return document.getElementById('bw'+i);});
   if (bassOn) {
-    wrap.classList.add('on');
+    if (lbl)  lbl.textContent = 'BASS ON';
+    if (roof) roof.style.background = '#cc1818';
+    bw.forEach(function(w,i){ if(w){ w.style.background = i%2===0?'#cc1818':'#882010'; w.style.boxShadow='0 0 3px #cc1818'; } });
     buildBassNodes();
+    bassRootHz = bassRootBase;
+    if (bassOsc) bassOsc.frequency.setValueAtTime(bassRootHz, actx.currentTime);
     bassAmp.gain.setTargetAtTime(0.7, actx.currentTime, 0.08);
   } else {
-    wrap.classList.remove('on');
+    if (lbl)  lbl.textContent = 'BASS OFF';
+    if (roof) roof.style.background = '#2a1838';
+    bw.forEach(function(w){ if(w){ w.style.background=''; w.style.boxShadow=''; } });
     if (bassAmp) bassAmp.gain.setTargetAtTime(0.0, actx.currentTime, 0.08);
+  }
+}
+
+
+// ── BASS PANEL PARAMETER ENGINE ───────────────────────
+// All mutations stay within the established dark/ominous mood.
+// Scale choices: minor pentatonic, phrygian, dorian, diminished, blues
+// — no major scales, nothing bright or resolved.
+
+const BASS_SCALES = {
+  'PHRYGIAN':   [0,1,3,5,7,8,10],   // flat-2, dark modal
+  'MINOR PEN':  [0,3,5,7,10],        // minor pentatonic — deep and sparse
+  'DORIAN':     [0,2,3,5,7,9,10],    // dorian — minor with raised 6, bluesy
+  'DIMINISHED': [0,2,3,5,6,8,9,11],  // octatonic — tense, horror
+  'BLUES':      [0,3,5,6,7,10],      // blues scale — gritty
+  'LOCRIAN':    [0,1,3,5,6,8,10],    // locrian — most dissonant
+};
+const SCALE_NAMES = Object.keys(BASS_SCALES);
+let bassScaleName = 'MINOR PEN';
+let bassScaleIntervals = BASS_SCALES['MINOR PEN'];
+
+// Root notes — stays in lower register, dark keys
+const DARK_ROOTS_HZ = [
+  29.14,  // D1  — very low
+  30.87,  // Eb1
+  32.70,  // E1
+  36.71,  // D1 (lower octave Bb)
+  38.89,  // B0 — unsettling
+  41.20,  // E1
+  43.65,  // F1
+  46.25,  // Bb1 — dark
+  49.00,  // G1
+  55.00,  // A1 — classic 808 root
+  51.91,  // Ab1
+  58.27,  // Bb1
+];
+let bassRootBase = 55; // A1 — the base root, intervals applied on top
+
+// Interval sequence — which scale degrees play on each drum hit type
+// kick=root, snare=interval[1], tom=interval[2], hh=small accent
+let bassKickInterval  = 0;    // scale degree offset for kick (usually 0 = root)
+let bassSnareInterval = 2;    // scale degree for snare hit
+let bassTomInterval   = 4;    // scale degree for tom hit
+
+// Detune — subtle pitch wobble on the sawtooth for thickness
+let bassDetuneCents = 0;
+
+// Waveform
+const BASS_WAVES = ['sawtooth','square','triangle','sawtooth']; // sawtooth twice = more likely
+let bassWaveIdx = 0;
+
+function scaleHz(rootHz, scaleDegree) {
+  // Returns Hz of rootHz transposed up by scaleDegree semitones (from current scale)
+  const semitones = bassScaleIntervals[scaleDegree % bassScaleIntervals.length] || 0;
+  return rootHz * Math.pow(2, semitones / 12);
+}
+
+// ── MELODY CONTROLS ──────────────────────────────────
+function bassRndScale() {
+  const idx = Math.floor(Math.random() * SCALE_NAMES.length);
+  bassScaleName = SCALE_NAMES[idx];
+  bassScaleIntervals = BASS_SCALES[bassScaleName];
+  // Flash scale label momentarily on the SCALE button
+  flashBldBtn('SCALE\n' + bassScaleName);
+  // Re-tune bass osc to new root
+  if (bassOsc && bassOn) {
+    bassRootBase = DARK_ROOTS_HZ[Math.floor(Math.random() * DARK_ROOTS_HZ.length)];
+    bassRootHz = bassRootBase;
+    bassOsc.frequency.setTargetAtTime(bassRootHz, actx.currentTime, 0.05);
+  }
+}
+
+function bassRndRoot() {
+  bassRootBase = DARK_ROOTS_HZ[Math.floor(Math.random() * DARK_ROOTS_HZ.length)];
+  bassRootHz = bassRootBase;
+  if (bassOsc && bassOn) {
+    bassOsc.frequency.setTargetAtTime(bassRootHz, actx.currentTime, 0.06);
+  }
+  flashBldBtn('ROOT');
+}
+
+function bassRndIntervals() {
+  // Randomize which scale degrees respond to snare and tom
+  const maxDeg = bassScaleIntervals.length - 1;
+  bassKickInterval  = 0; // kick always root
+  bassSnareInterval = 1 + Math.floor(Math.random() * Math.min(3, maxDeg));
+  bassTomInterval   = Math.floor(Math.random() * (maxDeg + 1));
+  flashBldBtn('INTRVL');
+}
+
+// ── SOUND CONTROLS ────────────────────────────────────
+function bassRndWave() {
+  bassWaveIdx = (bassWaveIdx + 1) % BASS_WAVES.length;
+  const wave = BASS_WAVES[bassWaveIdx];
+  if (bassOsc) bassOsc.type = wave;
+  const labels = ['SAW','SQR','TRI','SAW'];
+  document.getElementById('bass-wave-lbl').textContent = labels[bassWaveIdx];
+  flashBldBtn('WAVE:' + labels[bassWaveIdx]);
+}
+
+function bassRndFilter() {
+  if (!bassFilter) return;
+  const cutoff = 120 + Math.random() * 1200;  // 120–1320 Hz — stays dark
+  const q      = 2 + Math.random() * 8;        // resonant but not squealy
+  bassFilter.frequency.setTargetAtTime(cutoff, actx.currentTime, 0.08);
+  bassFilter.Q.setTargetAtTime(q, actx.currentTime, 0.08);
+  flashBldBtn('FILT');
+}
+
+function bassRndDetune() {
+  bassDetuneCents = (Math.random() * 30 - 15) | 0; // -15 to +15 cents
+  if (bassOsc) bassOsc.detune.setTargetAtTime(bassDetuneCents, actx.currentTime, 0.1);
+  flashBldBtn('TUNE');
+}
+
+function flashBldBtn(name) {
+  // Brief visual feedback — not critical, just helpful
+  console.log('BASS:', name);
+}
+
+// ── PATCH tickBass to use scale-aware intervals ───────
+// Store original tickBass and wrap it
+const _origTickBass = tickBass;
+
+// Override tickBass to use scale degrees
+function tickBass(step, t) {
+  if (!bassOn || !bassOsc) return;
+
+  const hasKick  = liveSteps.kick[step];
+  const hasSnare = liveSteps.snare[step];
+  const hasTom   = liveSteps.tom[step];
+  const hasHH    = liveSteps.hh[step];
+
+  if (step === 0 || (hasKick && Math.random() > 0.7)) {
+    bassRootIdx = (bassRootIdx + 1) % BASS_ROOTS.length;
+    bassRootHz  = bassRootBase; // use panel-set root, not old array
+    if (bassOsc) bassOsc.frequency.setTargetAtTime(bassRootHz, actx.currentTime + 0.02, 0.04);
+  }
+
+  const now = t;
+  const osc = bassOsc;
+  const fil = bassFilter;
+
+  // Derive target frequencies from scale
+  const kickHz  = scaleHz(bassRootHz, bassKickInterval);
+  const snareHz = scaleHz(bassRootHz, bassSnareInterval);
+  const tomHz   = scaleHz(bassRootHz * 2, bassTomInterval); // tom one oct up for variety
+
+  if (hasKick) {
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(kickHz * 0.5, now);
+    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.18);
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(80, now);
+    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.25);
+    bassAmp.gain.cancelScheduledValues(now);
+    bassAmp.gain.setValueAtTime(1.2, now);
+    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.3);
+  } else if (hasSnare) {
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(snareHz, now);
+    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.14);
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(1100, now);
+    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.22);
+  } else if (hasTom) {
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(tomHz, now);
+    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.25);
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(620, now);
+    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.18);
+  } else if (hasHH) {
+    const semi = kickHz * 1.059;
+    osc.frequency.cancelScheduledValues(now);
+    osc.frequency.setValueAtTime(semi, now);
+    osc.frequency.setValueAtTime(kickHz, now + 0.04);
+    fil.frequency.cancelScheduledValues(now);
+    fil.frequency.setValueAtTime(1200, now);
+    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.06);
+    bassAmp.gain.cancelScheduledValues(now);
+    bassAmp.gain.setValueAtTime(0.85, now);
+    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.06);
+  } else {
+    const drift = kickHz * (0.98 + Math.random() * 0.04);
+    osc.frequency.setTargetAtTime(drift, now, 0.1);
+    fil.frequency.setTargetAtTime(bassFilter.frequency.value || 300, now, 0.15);
   }
 }
 
