@@ -225,6 +225,94 @@
   /* Vertical section labels — hidden now, each button is wide enough to label itself */
   .bld-gap { display: none; }
   .bld-section { display: none; }
+
+  /* ── INFO OVERLAY ── */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(6,5,15,0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    pointer-events: all;
+    transition: opacity 0.6s ease;
+  }
+  #overlay.fading { opacity: 0; pointer-events: none; }
+  #overlay.gone   { display: none; }
+
+  #overlay-inner {
+    width: 92%;
+    max-width: 400px;
+    border: 2px solid #3a2060;
+    background: #080612;
+    padding: 22px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .ov-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: #e8d888;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 0 0 16px #c0a85866;
+  }
+
+  .ov-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid #1e1438;
+  }
+  .ov-row:last-of-type { border-bottom: none; }
+
+  .ov-icon {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: #cc2020;
+    min-width: 70px;
+    text-align: right;
+    flex-shrink: 0;
+    line-height: 1.8;
+    letter-spacing: 0.5px;
+  }
+  .ov-icon.blu { color: #4488ff; }
+  .ov-icon.amb { color: #d09020; }
+  .ov-icon.grn { color: #20a050; }
+  .ov-icon.pur { color: #aa55ff; }
+
+  .ov-desc {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: #a890c8;
+    line-height: 2;
+    flex: 1;
+  }
+  .ov-desc b {
+    color: #e8d888;
+    font-weight: normal;
+  }
+
+  .ov-hint {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: #4a3060;
+    text-align: center;
+    margin-top: 18px;
+    letter-spacing: 2px;
+    animation: ov-blink 1.8s ease-in-out infinite;
+  }
+  @keyframes ov-blink {
+    0%,100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+  }
 </style>
 </head>
 <body>
@@ -234,12 +322,52 @@
   <canvas id="init-canvas" width="120" height="80"></canvas>
   <div class="ititle">SKULL CITY</div>
   <div class="isub">808 DRUM SYNTHESIS<br>DISTORTION ENGINE<br>USE HEADPHONES</div>
-  <button id="ibtn" onclick="boot()">[ WAKE THE DEAD ]</button>
+  <button id="ibtn" onclick="boot()">[ ENTER ]</button>
 </div>
 
 <!-- ══ APP ══ -->
 <div id="app" class="gone">
   <canvas id="scene"></canvas>
+  <!-- ══ INFO OVERLAY ══ -->
+  <div id="overlay">
+    <div id="overlay-inner">
+      <div class="ov-title">SKULL CITY</div>
+
+      <div class="ov-row">
+        <div class="ov-icon blu">👁 LEFT</div>
+        <div class="ov-desc">Switch drum on <b>teeth</b><br>KICK · SNARE · TOM · HH</div>
+      </div>
+
+      <div class="ov-row">
+        <div class="ov-icon pur">👁 RIGHT</div>
+        <div class="ov-desc">Randomize <b>FX chain</b></div>
+      </div>
+
+      <div class="ov-row">
+        <div class="ov-icon">👃 NOSE</div>
+        <div class="ov-desc">Randomize <b>all patterns</b></div>
+      </div>
+
+      <div class="ov-row">
+        <div class="ov-icon amb">☁ SKY</div>
+        <div class="ov-desc"><b>Swipe</b> X = filter<br><b>Swipe</b> Y = distortion</div>
+      </div>
+
+      <div class="ov-row">
+        <div class="ov-icon grn">▦ TEETH</div>
+        <div class="ov-desc">Tap to <b>toggle steps</b></div>
+      </div>
+
+      <div class="ov-row">
+        <div class="ov-icon amb">▤ BASS</div>
+        <div class="ov-desc">Auto-bass · <b>building buttons</b><br>tune scale, root &amp; wave</div>
+      </div>
+
+      <div class="ov-hint">TOUCH TO BEGIN</div>
+    </div>
+  </div>
+
+
 
   <!-- ══ BASS PANEL ══ -->
   <div id="bass-panel">
@@ -1117,24 +1245,33 @@ function drawBoneDetails() {
     }
   }
 
-  // Mandible / jaw outline — the gumline above the teeth
-  const jawY = UPPER_TOP - 4;
-  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), jawY, P.bone2);
-  hLine(TEETH_X+1, TEETH_X + 8*(TOOTH_W+TOOTH_GAP)-1, jawY+1, P.bone3);
-  // Lower jaw seam
-  const lJawY = LOWER_TOP + LOWER_H + 2;
-  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), lJawY, P.bone3);
+  // Jaw bone — sparse window lights instead of solid lines
+  // Small 2×2 amber windows dotted along the jaw, one per tooth gap
+  const jawWinY = UPPER_TOP - 6;  // just above upper teeth
+  const lJawWinY = LOWER_TOP + LOWER_H + 3; // just below lower teeth
+  const winAmb  = P.winAmb2;   // dim amber — bone-embedded windows
+  const winDark = '#1a1228';   // dark bone fill between windows
 
-  // Jaw sides — suggest skull cheeks in bone color
-  const jawLeft = TEETH_X - 3;
-  const jawRight = TEETH_X + 8*(TOOTH_W+TOOTH_GAP) + 2;
-  vLine(jawLeft,  jawY, lJawY+3, P.bone2);
-  vLine(jawRight, jawY, lJawY+3, P.bone2);
+  for (let i = 0; i < 8; i++) {
+    const tx = TEETH_X + i * (TOOTH_W + TOOTH_GAP);
+    const midX = tx + (TOOTH_W >> 1) - 1; // center of each tooth
 
-  // Gumline — dark pink strip above upper teeth
-  const gumCol = '#3a1010';
+    // Upper jaw window — 2×2 pixel, dim amber
+    pxH(midX,   jawWinY,   winAmb);
+    pxH(midX+1, jawWinY,   winAmb);
+    pxH(midX,   jawWinY+1, winAmb);
+    pxH(midX+1, jawWinY+1, winDark);
+
+    // Lower jaw window
+    pxH(midX,   lJawWinY,   winAmb);
+    pxH(midX+1, lJawWinY,   winAmb);
+    pxH(midX,   lJawWinY+1, winAmb);
+    pxH(midX+1, lJawWinY+1, winDark);
+  }
+
+  // Thin dark gum tissue strip — just 1px, very subtle
+  const gumCol = '#2a0c0c';
   hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), UPPER_TOP-2, gumCol);
-  hLine(TEETH_X, TEETH_X + 8*(TOOTH_W+TOOTH_GAP), UPPER_TOP-1, gumCol);
 
   // Suture crack across cranium top — pixel jagged line
   const crownY = FLOOR_Y - Math.max(...BUILDINGS.map(b=>b.h)) - 2;
@@ -1358,25 +1495,35 @@ function onTap(clientX, clientY) {
 
 function onSwipeMove(clientX, clientY) {
   const [sx, sy] = getSceneXY(clientX, clientY);
-  // Only active in the sky/cranium zone — above the eyes
   if (sy >= EYE_L.y) return;
 
   const xPct = sx / SCENE_W;
-  const yPct = sy / EYE_L.y; // 0=top of scene, 1=top of eye sockets
+  const yPct = sy / EYE_L.y;
   fxState.filt = 60 + Math.pow(xPct, 2) * 14000;
   fxState.dist = 20 + (1 - yPct) * 400;
   applyFX();
+
+  // Write into loop at current position while dragging
+  // (step-based tick also records, this fills in between steps)
+  if (isPlaying) filterLoop[loopStep] = fxState.filt;
 }
 
 // Touch/Mouse events — attached in boot() once canvas exists
 function attachCanvasEvents() {
+  // Dismiss overlay on first any-touch anywhere in app
+  var appEl = document.getElementById('app');
+  if (appEl) {
+    appEl.addEventListener('touchstart', dismissOverlay, {once: true, passive: true});
+    appEl.addEventListener('mousedown',  dismissOverlay, {once: true});
+  }
+
   canvas.addEventListener('touchstart', e=>{
     e.preventDefault();
     const t=e.touches[0];
     lastTapX=t.clientX; lastTapY=t.clientY;
-    // Only start swipe drag in upper zone (sky/cranium above eyes)
     const [sx,sy]=getSceneXY(t.clientX,t.clientY);
     swipeDragging = (sy < EYE_L.y);
+    if (swipeDragging) userTouching = true;
   }, {passive:false});
 
   canvas.addEventListener('touchmove', e=>{
@@ -1391,20 +1538,23 @@ function attachCanvasEvents() {
     const dx=t.clientX-lastTapX, dy=t.clientY-lastTapY;
     if (Math.abs(dx)<8 && Math.abs(dy)<8) onTap(t.clientX,t.clientY);
     swipeDragging=false;
+    userTouching=false;
   }, {passive:false});
 
   canvas.addEventListener('mousedown', e=>{
     lastTapX=e.clientX; lastTapY=e.clientY;
     const [sx,sy]=getSceneXY(e.clientX,e.clientY);
     swipeDragging=(sy < EYE_L.y);
+    if (swipeDragging) userTouching=true;
   });
   canvas.addEventListener('mousemove', e=>{ if(swipeDragging) onSwipeMove(e.clientX,e.clientY); });
   canvas.addEventListener('mouseup', e=>{
     const dx=e.clientX-lastTapX, dy=e.clientY-lastTapY;
     if (Math.abs(dx)<5&&Math.abs(dy)<5) onTap(e.clientX,e.clientY);
     swipeDragging=false;
+    userTouching=false;
   });
-  canvas.addEventListener('mouseleave', ()=>{ swipeDragging=false; });
+  canvas.addEventListener('mouseleave', ()=>{ swipeDragging=false; userTouching=false; });
 }
 
 // ── DRUM CYCLE / FX / RANDOMIZE ──────────────────────
@@ -1532,10 +1682,13 @@ function applyFX(){
 // HH   pure noise, BPF tracking root×20+ (inharmonic shimmer zone)
 
 function playKick(t){
-  const root = bassRootHz || 55;
+  const root = bassRootBase || bassRootHz || 55;
   // Kick body lands on its scale degree — scaleHz resolves to root when kickScaleDegree=0
   // so default behaviour is identical; other degrees shift the pitch harmonically
   const kickRoot = (typeof scaleHz === 'function') ? scaleHz(root, kickScaleDegree) : root;
+  // Kick owns the pitch — announce it to the whole mix
+  lastKickHz = kickRoot;
+  bassRootHz = kickRoot;
   const g=actx.createGain();
   g.gain.setValueAtTime(0,t);
   g.gain.linearRampToValueAtTime(3.2,t+0.002);
@@ -1620,19 +1773,59 @@ function playHH(t){
 }
 const drumFns=[playKick,playSnare,playTom,playHH];
 
+
+// ── FILTER LOOP RECORDER ──────────────────────────────
+// 64-step loop (4 bars × 16 steps). Records fxState.filt
+// position as the user swipes. Plays back automatically.
+// User input always takes priority and overwrites the loop.
+
+const LOOP_LEN   = 64;  // 4 bars
+const FILT_MIN   = 60;
+const FILT_MAX   = 14060;
+const FILT_DEF   = 950; // default resting value
+
+let filterLoop   = new Array(LOOP_LEN).fill(FILT_DEF); // stored filter values
+let loopStep     = 0;   // current position in the 4-bar loop (0-63)
+let userTouching = false; // true while finger is on screen swiping
+
+// Called every sequencer step — advance loop position, apply playback or record
+function tickFilterLoop(step) {
+  // Advance loop position in sync with the sequencer
+  // loopStep increments every sequencer step, wraps at LOOP_LEN
+  loopStep = (loopStep + 1) % LOOP_LEN;
+
+  if (userTouching) {
+    // RECORD: user is actively adjusting — write current value into loop
+    filterLoop[loopStep] = fxState.filt;
+  } else {
+    // PLAYBACK: smoothly interpolate toward the stored value
+    const target = filterLoop[loopStep];
+    // Snap if far away, glide if close — avoids jarring jumps
+    const dist = Math.abs(target - fxState.filt);
+    const speed = dist > 2000 ? 0.3 : dist > 500 ? 0.15 : 0.08;
+    fxState.filt = fxState.filt + (target - fxState.filt) * speed;
+    applyFX();
+  }
+}
+
+// Reset loop position when sequencer restarts
+function resetFilterLoop() {
+  loopStep = 0;
+}
+
 function stepMs(){return(60/bpm)/4*1000;}
 function tick(){
   const t=actx.currentTime+0.02;
-  // Advance bass root FIRST so drums and bass all read the same pitch this step
   advanceBassRoot(currentStep);
   drumNames.forEach((d,i)=>{if(liveSteps[d][currentStep])drumFns[i](t);});
   tickBass(currentStep, t);
+  tickFilterLoop(currentStep);
   currentStep=(currentStep+1)%STEPS;
 }
 function togglePlay(){isPlaying?pause_():play_();}
 function play_(){
   if(!actx)return;if(actx.state==='suspended')actx.resume();
-  isPlaying=true;currentStep=0;tick();stepInterval=setInterval(tick,stepMs());
+  isPlaying=true;currentStep=0;loopStep=0;tick();stepInterval=setInterval(tick,stepMs());
   document.getElementById('play-btn').textContent='|| PAUSE';
   document.getElementById('play-btn').classList.add('on');
 }
@@ -1671,17 +1864,14 @@ const BASS_ROOTS_MIDI = [33, 33, 36, 33, 40, 33, 38, 33, 43, 33, 36, 40]; // A A
 const BASS_ROOTS = BASS_ROOTS_MIDI.map(midiToHz);
 let bassRootHz   = BASS_ROOTS[0];
 let bassRootIdx  = 0;
+let lastKickHz   = BASS_ROOTS[0];
 
 // Called at the TOP of tick() — before drums or bass fire — so everyone reads the same root
 function advanceBassRoot(step) {
-  // Advance only on beat 1 of each bar (step 0) or occasionally on kick hits
+  // Only rotate the base key — bassRootHz is owned by playKick via lastKickHz
   if (step === 0) {
-    bassRootIdx = (bassRootIdx + 1) % BASS_ROOTS.length;
-    bassRootHz  = BASS_ROOTS[bassRootIdx];
-    // Also push the running oscillator to the new root smoothly
-    if (bassOsc && bassOn) {
-      bassOsc.frequency.setTargetAtTime(bassRootHz, actx.currentTime + 0.02, 0.04);
-    }
+    bassRootIdx  = (bassRootIdx + 1) % BASS_ROOTS.length;
+    bassRootBase = BASS_ROOTS[bassRootIdx];
   }
 }
 
@@ -1714,65 +1904,8 @@ function buildBassNodes() {
   bassOsc.start();
 }
 
-// Called every sequencer step — reacts to what just fired
-function tickBass(step, t) {
-  if (!bassOn || !bassOsc) return;
+// tickBass stub removed — single definition below
 
-  const hasKick  = liveSteps.kick[step];
-  const hasSnare = liveSteps.snare[step];
-  const hasTom   = liveSteps.tom[step];
-  const hasHH    = liveSteps.hh[step];
-
-  // Root was already advanced by advanceBassRoot() — read the current value
-  const now = t;
-  const osc = bassOsc;
-  const fil = bassFilter;
-
-  if (hasKick) {
-    // playKick already set bassOsc pitch to kickRoot*0.5 — just drive filter and amp
-    fil.frequency.cancelScheduledValues(now);
-    fil.frequency.setValueAtTime(80, now);
-    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.30);
-    bassAmp.gain.cancelScheduledValues(now);
-    bassAmp.gain.setValueAtTime(1.3, now);
-    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.35);
-  } else if (hasSnare) {
-    // Snare: bass jumps to minor 7th (matching snare tone interval) then back
-    osc.frequency.cancelScheduledValues(now);
-    osc.frequency.setValueAtTime(bassRootHz * 1.778, now);  // minor 7th
-    osc.frequency.exponentialRampToValueAtTime(bassRootHz, now + 0.14);
-    fil.frequency.cancelScheduledValues(now);
-    fil.frequency.setValueAtTime(1100, now);
-    fil.frequency.exponentialRampToValueAtTime(280, now + 0.22);
-  } else if (hasTom) {
-    // Tom: bass steps to perfect 5th (matching tom's interval) then settles back
-    osc.frequency.cancelScheduledValues(now);
-    osc.frequency.setValueAtTime(bassRootHz * 1.5, now);    // perfect 5th
-    osc.frequency.exponentialRampToValueAtTime(bassRootHz, now + 0.25);
-    fil.frequency.cancelScheduledValues(now);
-    fil.frequency.setValueAtTime(620, now);
-    fil.frequency.exponentialRampToValueAtTime(280, now + 0.18);
-  } else if (hasHH) {
-    // HH: pitch trill up a semitone (x1.059) and back, filter flutter
-    const semi = bassRootHz * 1.059;
-    osc.frequency.cancelScheduledValues(now);
-    osc.frequency.setValueAtTime(semi, now);
-    osc.frequency.setValueAtTime(bassRootHz, now + 0.04);
-    // Filter opens briefly then snaps back
-    fil.frequency.cancelScheduledValues(now);
-    fil.frequency.setValueAtTime(1200, now);
-    fil.frequency.exponentialRampToValueAtTime(280, now + 0.06);
-    // Slight amp accent
-    bassAmp.gain.cancelScheduledValues(now);
-    bassAmp.gain.setValueAtTime(0.85, now);
-    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.06);
-  } else {
-    // Quiet step: subtle pitch oscillation, filter drifts
-    const drift = bassRootHz * (0.98 + Math.random() * 0.04);
-    osc.frequency.setTargetAtTime(drift, now, 0.1);
-    fil.frequency.setTargetAtTime(300, now, 0.15);
-  }
-}
 
 function toggleBass() {
   if (!actx) return;
@@ -1783,16 +1916,30 @@ function toggleBass() {
   if (bassOn) {
     if (lbl)  lbl.textContent = 'BASS ON';
     if (roof) roof.style.background = '#cc1818';
-    bw.forEach(function(w,i){ if(w){ w.style.background = i%2===0?'#cc1818':'#882010'; w.style.boxShadow='0 0 3px #cc1818'; } });
+    bw.forEach(function(w,i){ if(w){ w.style.background=i%2===0?'#cc1818':'#882010'; w.style.boxShadow='0 0 3px #cc1818'; } });
     buildBassNodes();
-    bassRootHz = bassRootBase;
-    if (bassOsc) bassOsc.frequency.setValueAtTime(bassRootHz, actx.currentTime);
-    bassAmp.gain.setTargetAtTime(0.7, actx.currentTime, 0.08);
+    if (bassAmp) {
+      bassAmp.gain.cancelScheduledValues(actx.currentTime);
+      bassAmp.gain.setValueAtTime(0, actx.currentTime);
+      bassAmp.gain.linearRampToValueAtTime(0.7, actx.currentTime + 0.05);
+    }
   } else {
     if (lbl)  lbl.textContent = 'BASS OFF';
     if (roof) roof.style.background = '#2a1838';
     bw.forEach(function(w){ if(w){ w.style.background=''; w.style.boxShadow=''; } });
-    if (bassAmp) bassAmp.gain.setTargetAtTime(0.0, actx.currentTime, 0.08);
+    if (bassAmp) {
+      // Cancel any pending gain ramps (from tickBass) and ramp to true zero
+      bassAmp.gain.cancelScheduledValues(actx.currentTime);
+      bassAmp.gain.setValueAtTime(bassAmp.gain.value, actx.currentTime);
+      bassAmp.gain.linearRampToValueAtTime(0.0, actx.currentTime + 0.12);
+    }
+    // Also cancel any pending frequency automation on the oscillator
+    if (bassOsc) {
+      bassOsc.frequency.cancelScheduledValues(actx.currentTime);
+    }
+    if (bassFilter) {
+      bassFilter.frequency.cancelScheduledValues(actx.currentTime);
+    }
   }
 }
 
@@ -1935,10 +2082,7 @@ function flashBldBtn(name) {
 }
 
 // ── PATCH tickBass to use scale-aware intervals ───────
-// Store original tickBass and wrap it
-const _origTickBass = tickBass;
-
-// Override tickBass to use scale degrees
+// tickBass — bass follows kick pitch via lastKickHz
 function tickBass(step, t) {
   if (!bassOn || !bassOsc) return;
 
@@ -1947,104 +2091,159 @@ function tickBass(step, t) {
   const hasTom   = liveSteps.tom[step];
   const hasHH    = liveSteps.hh[step];
 
-  if (step === 0 || (hasKick && Math.random() > 0.7)) {
-    bassRootIdx = (bassRootIdx + 1) % BASS_ROOTS.length;
-    bassRootHz  = bassRootBase; // use panel-set root, not old array
-    if (bassOsc) bassOsc.frequency.setTargetAtTime(bassRootHz, actx.currentTime + 0.02, 0.04);
-  }
-
   const now = t;
   const osc = bassOsc;
   const fil = bassFilter;
+  const filRest = (fil && fil.frequency && fil.frequency.value) || 300;
 
-  // Derive target frequencies from scale
-  const kickHz  = scaleHz(bassRootHz, bassKickInterval);
-  const snareHz = scaleHz(bassRootHz, bassSnareInterval);
-  const tomHz   = scaleHz(bassRootHz * 2, bassTomInterval); // tom one oct up for variety
+  // Everything derives from what the kick last played
+  const kickHz  = lastKickHz;
+  const snareHz = (typeof scaleHz==='function') ? scaleHz(lastKickHz, bassSnareInterval) : lastKickHz*1.5;
+  const tomHz   = (typeof scaleHz==='function') ? scaleHz(lastKickHz*2, bassTomInterval) : lastKickHz*3;
 
   if (hasKick) {
+    // Lock bass one octave below kick landing — same note, sub register
     osc.frequency.cancelScheduledValues(now);
     osc.frequency.setValueAtTime(kickHz * 0.5, now);
-    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.18);
+    osc.frequency.exponentialRampToValueAtTime(kickHz * 0.5, now + 0.5);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(80, now);
-    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.25);
+    fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.28);
     bassAmp.gain.cancelScheduledValues(now);
-    bassAmp.gain.setValueAtTime(1.2, now);
-    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.3);
+    bassAmp.gain.setValueAtTime(1.3, now);
+    bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.35);
   } else if (hasSnare) {
     osc.frequency.cancelScheduledValues(now);
-    osc.frequency.setValueAtTime(snareHz, now);
-    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.14);
+    osc.frequency.setValueAtTime(snareHz * 0.5, now);
+    osc.frequency.exponentialRampToValueAtTime(kickHz * 0.5, now + 0.14);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(1100, now);
-    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.22);
+    fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.22);
   } else if (hasTom) {
     osc.frequency.cancelScheduledValues(now);
-    osc.frequency.setValueAtTime(tomHz, now);
-    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.25);
+    osc.frequency.setValueAtTime(tomHz * 0.5, now);
+    osc.frequency.exponentialRampToValueAtTime(kickHz * 0.5, now + 0.25);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(620, now);
-    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.18);
+    fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.18);
   } else if (hasHH) {
-    const semi = kickHz * 1.059;
+    const semi = kickHz * 0.5 * 1.059;
     osc.frequency.cancelScheduledValues(now);
     osc.frequency.setValueAtTime(semi, now);
-    osc.frequency.setValueAtTime(kickHz, now + 0.04);
+    osc.frequency.setValueAtTime(kickHz * 0.5, now + 0.04);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(1200, now);
-    fil.frequency.exponentialRampToValueAtTime(bassFilter.frequency.value || 300, now + 0.06);
+    fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.06);
     bassAmp.gain.cancelScheduledValues(now);
     bassAmp.gain.setValueAtTime(0.85, now);
     bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.06);
   } else {
-    const drift = kickHz * (0.98 + Math.random() * 0.04);
-    osc.frequency.setTargetAtTime(drift, now, 0.1);
-    fil.frequency.setTargetAtTime(bassFilter.frequency.value || 300, now, 0.15);
+    const drift = kickHz * 0.5 * (0.99 + Math.random() * 0.02);
+    osc.frequency.setTargetAtTime(drift, now, 0.12);
+    fil.frequency.setTargetAtTime(filRest, now, 0.15);
   }
 }
 
-// ── BOOT ─────────────────────────────────────────────
+// ── BASS PANEL CONTROLS ─────────────────────────────
+function bassRndScale() {
+  var names = Object.keys(BASS_SCALES);
+  var idx = Math.floor(Math.random() * names.length);
+  bassScaleName = names[idx];
+  bassScaleIntervals = BASS_SCALES[bassScaleName];
+  var kickCandidates = [0, 0, 0, 2, 2, 4];
+  kickScaleDegree = Math.min(kickCandidates[Math.floor(Math.random()*kickCandidates.length)], bassScaleIntervals.length-1);
+  bassRootBase = DARK_ROOTS_HZ[Math.floor(Math.random() * DARK_ROOTS_HZ.length)];
+  if (bassOsc && bassOn) bassOsc.frequency.setTargetAtTime(bassRootBase * 0.5, actx.currentTime, 0.05);
+  flashBldBtn(bassScaleName);
+}
+function bassRndRoot() {
+  bassRootBase = DARK_ROOTS_HZ[Math.floor(Math.random() * DARK_ROOTS_HZ.length)];
+  if (bassOsc && bassOn) bassOsc.frequency.setTargetAtTime(bassRootBase * 0.5, actx.currentTime, 0.06);
+  flashBldBtn('ROOT');
+}
+function bassRndIntervals() {
+  var max = bassScaleIntervals.length - 1;
+  var kickC = [0,0,0,2,2,4];
+  kickScaleDegree   = Math.min(kickC[Math.floor(Math.random()*kickC.length)], max);
+  bassKickInterval  = kickScaleDegree;
+  bassSnareInterval = 1 + Math.floor(Math.random() * Math.min(3, max));
+  bassTomInterval   = Math.floor(Math.random() * (max + 1));
+  flashBldBtn('INTRVL');
+}
+function bassRndWave() {
+  bassWaveIdx = (bassWaveIdx + 1) % BASS_WAVES.length;
+  if (bassOsc) bassOsc.type = BASS_WAVES[bassWaveIdx];
+  var lblMap = ['SAW','SQR','TRI','SAW'];
+  var el = document.getElementById('bass-wave-lbl');
+  if (el) el.textContent = lblMap[bassWaveIdx];
+  flashBldBtn(lblMap[bassWaveIdx]);
+}
+function bassRndFilter() {
+  if (!bassFilter) return;
+  var cutoff = 120 + Math.random() * 1200;
+  var q = 2 + Math.random() * 8;
+  bassFilter.frequency.setTargetAtTime(cutoff, actx.currentTime, 0.08);
+  bassFilter.Q.setTargetAtTime(q, actx.currentTime, 0.08);
+  flashBldBtn('FILT');
+}
+function bassRndDetune() {
+  bassDetuneCents = ((Math.random() * 30 - 15) | 0);
+  if (bassOsc) bassOsc.detune.setTargetAtTime(bassDetuneCents, actx.currentTime, 0.1);
+  flashBldBtn('TUNE');
+}
+function flashBldBtn(name) {
+  var lbl = document.getElementById('bass-onoff-lbl');
+  if (!lbl) return;
+  lbl.textContent = name;
+  lbl.style.color = '#e8d888';
+  clearTimeout(flashBldBtn._t);
+  flashBldBtn._t = setTimeout(function() {
+    lbl.textContent = bassOn ? 'BASS ON' : 'BASS OFF';
+    lbl.style.color = '';
+  }, 900);
+}
+
+
+// ── INFO OVERLAY ─────────────────────────────────────
+let overlayDismissed = false;
+function dismissOverlay() {
+  if (overlayDismissed) return;
+  overlayDismissed = true;
+  var el = document.getElementById('overlay');
+  if (!el) return;
+  el.classList.add('fading');
+  setTimeout(function(){ el.classList.add('gone'); }, 650);
+}
+// ── BOOT ──────────────────────────────────────────────
 function boot() {
-  // Audio context
-  actx = new (window.AudioContext||window.webkitAudioContext)();
-  if (actx.state==='suspended') actx.resume();
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
   buildAudio();
 
-  // Canvas setup
   canvas = document.getElementById('scene');
   ctx2d  = canvas.getContext('2d');
   ctx2d.imageSmoothingEnabled = false;
-
-  // Size canvas to internal resolution, CSS scales it
   canvas.width  = SCENE_W;
   canvas.height = SCENE_H;
 
-  // Create pixel buffers
   imgData   = ctx2d.createImageData(SCENE_W, SCENE_H);
   buf32     = new Uint32Array(imgData.data.buffer);
   bgImgData = ctx2d.createImageData(SCENE_W, SCENE_H);
   bgBuf32   = new Uint32Array(bgImgData.data.buffer);
 
-  // Show app
   document.getElementById('init').classList.add('gone');
   document.getElementById('app').classList.remove('gone');
 
-  // Attach events now that canvas exists
   attachCanvasEvents();
-
-  // Start render loop
   requestAnimationFrame(render);
-
-  // Autoplay
-  setTimeout(()=>play_(), 400);
+  setTimeout(function(){ play_(); }, 400);
 }
 
-// ── INIT PAGE SKULL ANIMATION ─────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
   Object.values(P).forEach(function(h){ col(h); });
   drawInitSkull();
 });
+
 </script>
 </body>
 </html>
