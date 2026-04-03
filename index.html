@@ -618,8 +618,8 @@ const drumColorsB= ['#ff2244','#ff7722','#ddcc00','#00cc66']; // bright for disp
 let currentDrum = 0;
 
 const patterns = [
-  {kick:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-   tom: [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0],hh:   [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0]},
+  {kick:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+   tom: [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0],hh:   [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]},
   {kick:[1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0],snare:[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
    tom: [0,0,1,0,0,0,0,1,0,1,0,0,0,0,1,0],hh:   [1,1,0,1,1,0,1,1,1,0,1,0,1,1,0,1]},
   {kick:[1,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0],snare:[0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,1],
@@ -1505,7 +1505,10 @@ function onSwipeMove(clientX, clientY) {
 
   // Write into loop at current position while dragging
   // (step-based tick also records, this fills in between steps)
-  if (isPlaying) filterLoop[loopStep] = fxState.filt;
+  if (isPlaying) {
+    filtLoop[loopStep] = fxState.filt;
+    distLoop[loopStep] = fxState.dist;
+  }
 }
 
 // Touch/Mouse events — attached in boot() once canvas exists
@@ -1563,18 +1566,33 @@ function cycleDrum() {
 }
 
 function randomizeFX() {
-  fxState.dist    = 55 + Math.random()*360;
-  fxState.filt    = 120 + Math.random()*11000;
-  fxState.filtQ   = 0.4 + Math.random()*10;
-  // Tempo-synced delay fractions: 16th, 8th, dotted 8th, quarter
-  const dlyChoices=[0.25,0.375,0.5,0.75,1.0];
-  fxState.dly    = dlyChoices[Math.floor(Math.random()*dlyChoices.length)];
+  // Pick a random XY position using the same math as the skyline swipe.
+  const xPct = Math.random();
+  const yPct = Math.random();
+  const newFilt = 60  + Math.pow(xPct, 2) * 14000;
+  const newDist = 20  + (1 - yPct) * 400;
+
+  // Write into the CURRENT loop step only — other 63 slots keep existing values.
+  // This means the new position appears once per 4-bar cycle at this rhythmic point.
+  filtLoop[loopStep] = newFilt;
+  distLoop[loopStep] = newDist;
+
+  // Apply immediately so user hears it now
+  fxState.filt = newFilt;
+  fxState.dist = newDist;
+  applyFXSnap();
+
+  // Q, delay, mix: permanent, not loop-recorded
+  fxState.filtQ  = 0.4 + Math.random()*10;
+  const dlyChoices = [0.25, 0.375, 0.5, 0.75, 1.0];
+  fxState.dly    = dlyChoices[Math.floor(Math.random() * dlyChoices.length)];
   fxState.dlyMix = 0.25 + Math.random()*0.5;
   applyFX();
-  // Flash right eye
+
   eyeFlicker[1] = true;
-  setTimeout(()=>eyeFlicker[1]=false, 300);
+  setTimeout(function(){ eyeFlicker[1] = false; }, 300);
 }
+
 
 function randomizePatterns() {
   // Randomize all 4 drum patterns only — no FX, no tempo changes
@@ -1650,18 +1668,28 @@ function distCurve(amount){
 }
 
 function applyFX(){
+  // Smooth version — used by swipe, randomize, user interaction
   if(!actx)return;
   const t=actx.currentTime;
   distNode.curve=distCurve(fxState.dist);
   filterNode.frequency.setTargetAtTime(fxState.filt,t,0.04);
   filterNode.Q.setTargetAtTime(fxState.filtQ,t,0.04);
-  // Tempo-sync delay: dly is a beat multiplier (0.25=16th, 0.5=8th, 0.75=dotted 8th, 1.0=quarter)
   const beatSec = 60/bpm;
   delayNode.delayTime.setTargetAtTime(beatSec * fxState.dly, t, 0.02);
   delayFb.gain.setTargetAtTime(fxState.dlyMix, t, 0.04);
   delayWet.gain.setTargetAtTime(fxState.dlyMix * 0.8, t, 0.04);
   delaySend.gain.setTargetAtTime(fxState.dlyMix * 0.6, t, 0.04);
-  // Update sky colour from filter position
+  const newSkyT = Math.log(fxState.filt / 60) / Math.log(14060 / 60);
+  if (Math.abs(newSkyT - skyT) > 0.01) { skyT = newSkyT; bgDirty = true; }
+}
+
+function applyFXSnap(){
+  // Instant version — used by loop playback so values actually land each step
+  if(!actx)return;
+  const t=actx.currentTime;
+  distNode.curve=distCurve(fxState.dist);
+  filterNode.frequency.cancelScheduledValues(t);
+  filterNode.frequency.setValueAtTime(fxState.filt, t);
   const newSkyT = Math.log(fxState.filt / 60) / Math.log(14060 / 60);
   if (Math.abs(newSkyT - skyT) > 0.01) { skyT = newSkyT; bgDirty = true; }
 }
@@ -1775,36 +1803,41 @@ const drumFns=[playKick,playSnare,playTom,playHH];
 
 
 // ── FILTER LOOP RECORDER ──────────────────────────────
-// 64-step loop (4 bars × 16 steps). Records fxState.filt
-// position as the user swipes. Plays back automatically.
-// User input always takes priority and overwrites the loop.
+// 64-step XY pad loop (4 bars). Records filter (X) + distortion (Y).
+// Plays back automatically. User input always overwrites.
 
 const LOOP_LEN   = 64;  // 4 bars
-const FILT_MIN   = 60;
-const FILT_MAX   = 14060;
-const FILT_DEF   = 950; // default resting value
+const FILT_DEF   = 950;
+const DIST_DEF   = 190;
 
-let filterLoop   = new Array(LOOP_LEN).fill(FILT_DEF); // stored filter values
-let loopStep     = 0;   // current position in the 4-bar loop (0-63)
-let userTouching = false; // true while finger is on screen swiping
+// XY pad loop — records both axes every step
+let filtLoop     = new Array(LOOP_LEN).fill(FILT_DEF); // X axis: filter
+let distLoop     = new Array(LOOP_LEN).fill(DIST_DEF); // Y axis: distortion
+let loopStep     = 0;
+let userTouching = false;
 
-// Called every sequencer step — advance loop position, apply playback or record
+// XY pad loop — records and plays back both filter (X) and distortion (Y)
 function tickFilterLoop(step) {
-  // Advance loop position in sync with the sequencer
-  // loopStep increments every sequencer step, wraps at LOOP_LEN
   loopStep = (loopStep + 1) % LOOP_LEN;
 
   if (userTouching) {
-    // RECORD: user is actively adjusting — write current value into loop
-    filterLoop[loopStep] = fxState.filt;
+    // RECORD both axes
+    filtLoop[loopStep] = fxState.filt;
+    distLoop[loopStep] = fxState.dist;
   } else {
-    // PLAYBACK: smoothly interpolate toward the stored value
-    const target = filterLoop[loopStep];
-    // Snap if far away, glide if close — avoids jarring jumps
-    const dist = Math.abs(target - fxState.filt);
-    const speed = dist > 2000 ? 0.3 : dist > 500 ? 0.15 : 0.08;
-    fxState.filt = fxState.filt + (target - fxState.filt) * speed;
-    applyFX();
+    // PLAYBACK — apply stored values directly each step.
+    // Look one step ahead to smooth transitions between different values.
+    const tFilt = filtLoop[loopStep];
+    const tDist = distLoop[loopStep];
+    const nextStep = (loopStep + 1) % LOOP_LEN;
+    const nFilt = filtLoop[nextStep];
+    const nDist = distLoop[nextStep];
+    // If next value differs, glide toward it; otherwise snap directly
+    const glideFilt = Math.abs(nFilt - tFilt) > 50;
+    const glideDist = Math.abs(nDist - tDist) > 10;
+    fxState.filt = glideFilt ? tFilt + (nFilt - tFilt) * 0.5 : tFilt;
+    fxState.dist = glideDist ? tDist + (nDist - tDist) * 0.5 : tDist;
+    applyFXSnap();
   }
 }
 
@@ -1899,7 +1932,7 @@ function buildBassNodes() {
   // Continuous sawtooth
   bassOsc = actx.createOscillator();
   bassOsc.type = 'sawtooth';
-  bassOsc.frequency.value = bassRootHz;
+  bassOsc.frequency.value = bassRootHz;  // unison with kick
   bassOsc.connect(bassFilter);
   bassOsc.start();
 }
@@ -2104,8 +2137,8 @@ function tickBass(step, t) {
   if (hasKick) {
     // Lock bass one octave below kick landing — same note, sub register
     osc.frequency.cancelScheduledValues(now);
-    osc.frequency.setValueAtTime(kickHz * 0.5, now);
-    osc.frequency.exponentialRampToValueAtTime(kickHz * 0.5, now + 0.5);
+    osc.frequency.setValueAtTime(kickHz, now);
+    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.5);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(80, now);
     fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.28);
@@ -2115,22 +2148,22 @@ function tickBass(step, t) {
   } else if (hasSnare) {
     osc.frequency.cancelScheduledValues(now);
     osc.frequency.setValueAtTime(snareHz * 0.5, now);
-    osc.frequency.exponentialRampToValueAtTime(kickHz * 0.5, now + 0.14);
+    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.14);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(1100, now);
     fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.22);
   } else if (hasTom) {
     osc.frequency.cancelScheduledValues(now);
     osc.frequency.setValueAtTime(tomHz * 0.5, now);
-    osc.frequency.exponentialRampToValueAtTime(kickHz * 0.5, now + 0.25);
+    osc.frequency.exponentialRampToValueAtTime(kickHz, now + 0.25);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(620, now);
     fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.18);
   } else if (hasHH) {
-    const semi = kickHz * 0.5 * 1.059;
+    const semi = kickHz * 1.059;
     osc.frequency.cancelScheduledValues(now);
     osc.frequency.setValueAtTime(semi, now);
-    osc.frequency.setValueAtTime(kickHz * 0.5, now + 0.04);
+    osc.frequency.setValueAtTime(kickHz, now + 0.04);
     fil.frequency.cancelScheduledValues(now);
     fil.frequency.setValueAtTime(1200, now);
     fil.frequency.exponentialRampToValueAtTime(filRest, now + 0.06);
@@ -2138,7 +2171,7 @@ function tickBass(step, t) {
     bassAmp.gain.setValueAtTime(0.85, now);
     bassAmp.gain.exponentialRampToValueAtTime(0.65, now + 0.06);
   } else {
-    const drift = kickHz * 0.5 * (0.99 + Math.random() * 0.02);
+    const drift = kickHz * (0.99 + Math.random() * 0.02);
     osc.frequency.setTargetAtTime(drift, now, 0.12);
     fil.frequency.setTargetAtTime(filRest, now, 0.15);
   }
@@ -2153,12 +2186,12 @@ function bassRndScale() {
   var kickCandidates = [0, 0, 0, 2, 2, 4];
   kickScaleDegree = Math.min(kickCandidates[Math.floor(Math.random()*kickCandidates.length)], bassScaleIntervals.length-1);
   bassRootBase = DARK_ROOTS_HZ[Math.floor(Math.random() * DARK_ROOTS_HZ.length)];
-  if (bassOsc && bassOn) bassOsc.frequency.setTargetAtTime(bassRootBase * 0.5, actx.currentTime, 0.05);
+  if (bassOsc && bassOn) bassOsc.frequency.setTargetAtTime(bassRootBase, actx.currentTime, 0.05);
   flashBldBtn(bassScaleName);
 }
 function bassRndRoot() {
   bassRootBase = DARK_ROOTS_HZ[Math.floor(Math.random() * DARK_ROOTS_HZ.length)];
-  if (bassOsc && bassOn) bassOsc.frequency.setTargetAtTime(bassRootBase * 0.5, actx.currentTime, 0.06);
+  if (bassOsc && bassOn) bassOsc.frequency.setTargetAtTime(bassRootBase, actx.currentTime, 0.06);
   flashBldBtn('ROOT');
 }
 function bassRndIntervals() {
