@@ -908,6 +908,7 @@ function drawScene() {
 
   // ── DYNAMIC LAYERS (animated, drawn every frame) ──
   drawEyeSockets();   // red ember flicker
+  if (bassOn) drawFlames();  // building flames when bass active
   drawNose();         // static but small cost, keep simple
   drawTeeth();        // step highlights change each beat
   drawPlayhead();
@@ -1099,6 +1100,72 @@ function drawBuildings() {
         hLine(b.x+1, b.x+b.w-1, ny, nc);
       }
     }
+  }
+}
+
+function drawFlames() {
+  if (!bassOn) return;
+
+  // Pixel flame columns rising from each building rooftop.
+  // Each building gets a flame proportional to its width.
+  // Flame height pulses with animTick + kickPulse + per-building phase.
+  // Colors: white-hot base → amber → orange → red → dark red tip.
+  // Uses Bayer dither so edges are hard pixel, not smooth.
+
+  for (let bi = 0; bi < BUILDINGS.length; bi++) {
+    const b   = BUILDINGS[bi];
+    const top = FLOOR_Y - b.h;  // rooftop y
+    const phase = (animTick + bi * 3) % 16;
+
+    // Flame height: base 4px, pulses 2-8px extra with animTick
+    // kick pulse flares all flames simultaneously
+    const flicker = Math.sin(animTick * 0.9 + bi * 1.3) * 0.5 + 0.5; // 0-1
+    const baseH   = 3 + Math.round(flicker * 3);
+    const kickH   = Math.round(kickPulse * 6);
+    const flameH  = baseH + kickH;
+
+    // Only taller buildings (shade 0 or 1) get full flames;
+    // short eye-socket buildings get smaller embers
+    const maxH = b.shade === 2 ? Math.min(flameH, 3) : flameH;
+
+    // Flame column spans the building width, slightly inset
+    const x0 = b.x + 1;
+    const x1 = b.x + b.w - 1;
+
+    for (let dy = 0; dy < maxH; dy++) {
+      const y = top - 1 - dy;  // above the roofline
+      if (y < 0) break;
+      // t: 0=base (hot), 1=tip (dim)
+      const t = dy / Math.max(maxH - 1, 1);
+      const b_ = bayer; // alias
+
+      for (let x = x0; x < x1; x++) {
+        const dv = b_(x, y);
+
+        if (t < 0.15) {
+          // Base — white-hot core with amber surround
+          if (dv < 0.75) pxH(x, y, '#e8d080');      // warm white
+          else           pxH(x, y, '#e87020');       // amber
+        } else if (t < 0.35) {
+          // Lower flame — amber to orange
+          if (dv < 0.7 - t * 0.5) pxH(x, y, '#e87020');   // amber
+          else if (dv < 0.9 - t)  pxH(x, y, '#cc4010');   // orange-red
+          else                    pxH(x, y, '#880c04');    // dark red
+        } else if (t < 0.65) {
+          // Mid flame — orange to red
+          if (dv < 0.55 - t * 0.4) pxH(x, y, '#cc4010');
+          else if (dv < 0.75 - t * 0.5) pxH(x, y, '#880c04');
+          // else transparent (no pixel — sky shows through)
+        } else {
+          // Tips — sparse dark red dither, fades out
+          if (dv < 0.35 - t * 0.3) pxH(x, y, '#550808');
+        }
+      }
+    }
+
+    // Flame glow on rooftop edge — 1px amber line when bass on
+    const glowCol = kickPulse > 0.5 ? '#e87020' : '#883010';
+    hLine(x0, x1, top, glowCol);
   }
 }
 
